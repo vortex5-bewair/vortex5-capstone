@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useCachedFetch } from '../hooks/useCachedFetch'
+import { useLiveReadings, findLiveReading } from '../hooks/useLiveReadings'
+import LivenessIndicator from '../components/LivenessIndicator'
 import { CATEGORY_COLORS, aqiCategory } from '../utils/airQualityGuidance'
 
 const STATUS_LABELS = {
@@ -20,6 +22,9 @@ const StaffDeviceList = () => {
   const { data: readingsList } = useCachedFetch(
     user ? '/api/aqi/latest' : null, user?.token, { pollInterval: 10000 }
   )
+  // Liveness only (no live figure on this scanning screen) — mounted once
+  // here at the page level, never inside a device card.
+  const { data: liveList } = useLiveReadings()
 
   const readings = useMemo(() => {
     const list = readingsList || []
@@ -58,6 +63,7 @@ const StaffDeviceList = () => {
 
             const statusKey = !isOnline ? 'offline' : (r ? 'active' : 'available')
             const status = STATUS_LABELS[statusKey]
+            const live = findLiveReading(liveList, d.deviceId)
 
             return (
               <div
@@ -82,8 +88,9 @@ const StaffDeviceList = () => {
                   {aqi != null ? aqi : '--'}
                 </div>
                 <div className="dash-aqi-label" style={{ color: aqiColor }}>
-                  {category || 'No data'}
+                  {category || 'No data'} · 12-hr NowCast
                 </div>
+                <LivenessIndicator live={live} />
 
                 <div className="dash-device-cta">View details →</div>
               </div>

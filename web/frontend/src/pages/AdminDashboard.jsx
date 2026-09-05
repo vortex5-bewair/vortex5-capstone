@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { useLiveReadings, findLiveReading } from '../hooks/useLiveReadings'
+import LivenessIndicator from '../components/LivenessIndicator'
 import { Activity, AlertTriangle, Cpu, Users, X } from 'lucide-react'
 import { CATEGORY_COLORS } from '../utils/airQualityGuidance'
 
@@ -30,6 +32,10 @@ const AdminDashboard = () => {
 
   // Which modal (if any) is open
   const [modal, setModal] = useState(null) // 'devices' | 'alerts' | null
+
+  // Liveness only (no live figure on this scanning screen) — mounted once
+  // here at the page level, never inside a device card.
+  const { data: liveList } = useLiveReadings()
 
   useEffect(() => {
     if (!user) return
@@ -120,7 +126,7 @@ const AdminDashboard = () => {
           icon={<Activity size={20} />}
           label="Average AQI"
           value={kpis.avgAqi != null ? kpis.avgAqi : '--'}
-          sub={kpis.avgCategory || 'No data'}
+          sub={`${kpis.avgCategory || 'No data'} · 12-hr NowCast`}
           accent={kpis.avgCategory ? (CATEGORY_COLORS[kpis.avgCategory] || '#94a3b8') : '#94a3b8'}
         />
       </div>
@@ -143,6 +149,7 @@ const AdminDashboard = () => {
               const aqiColor = d.category
                 ? CATEGORY_COLORS[d.category]
                 : '#94a3b8'
+              const live = findLiveReading(liveList, d.deviceId)
               return (
                 <div
                   key={d.deviceId}
@@ -169,8 +176,9 @@ const AdminDashboard = () => {
                     {d.aqi != null ? d.aqi : '--'}
                   </div>
                   <div className="dash-aqi-label" style={{ color: aqiColor }}>
-                    {d.category || 'No data'}
+                    {d.category || 'No data'} · 12-hr NowCast
                   </div>
+                  <LivenessIndicator live={live} />
 
                   <div className="dash-device-metrics">
                     <Metric label="PM2.5" value={d.pm25 != null ? `${d.pm25} µg/m³` : '--'} />

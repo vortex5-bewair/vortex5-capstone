@@ -1,10 +1,16 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { useLiveReadings, findLiveReading } from '../hooks/useLiveReadings'
+import { aqiCategory, CATEGORY_COLORS } from '../utils/airQualityGuidance'
 import { ArrowLeft, Users, ChevronDown, ChevronUp, WifiOff, Power, Loader2 } from 'lucide-react'
 import AqiDetails from '../components/AqiDetails'
 import RecommendedActions from '../components/RecommendedActions'
 import ShareDeviceModal from '../components/ShareDeviceModal'
+
+// How long the live sparkline's window covers, client-side accumulated —
+// the backend only keeps ~15s of history for smoothing, not a full minute.
+const SPARKLINE_MS = 60 * 1000
 
 // How long ago a reading can be and still be considered "live"
 const STALE_MS = 2 * 60 * 1000 // 2 minutes
@@ -49,6 +55,27 @@ const DeviceDetail = () => {
   // existing "no data" state immediately and only shows numbers again once
   // a genuinely new reading proves the device is back.
   const [resetAt, setResetAt] = useState(null)
+
+  // ---------- Live reading (2s, in-memory, separate from the stored/reported
+  // poll below) — mounted once at the page level, per useLiveReadings' own
+  // contract, even though this page only ever shows one device. ----------
+  const { data: liveData } = useLiveReadings()
+  const live = findLiveReading(liveData, deviceId)
+
+  // Client-side sparkline: the backend only keeps ~15s of window for
+  // smoothing, so the ~60s history shown here is accumulated from what this
+  // page has already polled, not fetched as history.
+  const [sparkline, setSparkline] = useState([])
+  useEffect(() => {
+    if (!live?.available || live.receivedAt == null) return
+    setSparkline((prev) => {
+      const last = prev[prev.length - 1]
+      if (last && last.t === live.receivedAt) return prev // same frame, no new point
+      const next = [...prev, { t: live.receivedAt, value: live.aqiInstant }]
+      const cutoff = Date.now() - SPARKLINE_MS
+      return next.filter((p) => new Date(p.t).getTime() >= cutoff)
+    })
+  }, [live?.receivedAt, live?.available, live?.aqiInstant])
 
   // ---------- Fetch device + latest AQI ----------
   const fetchData = useCallback(async (isInitial = false) => {
@@ -224,6 +251,11 @@ const DeviceDetail = () => {
         </div>
       </div>
 
+      {/* ── Live (2s, in-memory) — separate figure from the stored/reported
+          one below; the raw instant value on purpose, jitter included, since
+          proving the sensor is reading right now is the point here. ── */}
+      <LiveReadingCard live={live} sparkline={sparkline} />
+
       {/* ── Data (always shown; stale readings remain visible) ── */}
       <AqiDetails
         aqi={displayReading || {
@@ -351,6 +383,65 @@ const DeviceDetail = () => {
           onAccessChange={setSharedCount}
         />
       )}
+    </div>
+  )
+}
+
+// Its own card, deliberately separate from AqiDetails below — two AQI
+// figures that disagree (by design: one is a single frame, the other a
+// 12-hour NowCast) need to look like two different things, not two numbers
+// competing inside one component.
+const LiveReadingCard = ({ live, sparkline }) => {
+  const available = live?.available
+  const stale = live?.stale
+  const category = available ? aqiCategory(live.aqiInstant) : null
+  const color = category ? CATEGORY_COLORS[category] : '#94a3b8'
+  const ageS = available ? Math.round((live.ageMs ?? 0) / 1000) : null
+
+  const statusText = !available
+    ? 'No live data yet'
+    : stale
+      ? 'Reconnecting…'
+      : `Live · ${ageS}s ago`
+
+  let points = null
+  if (sparkline.length > 1) {
+    const vals = sparkline.map((p) => p.value)
+    const min = Math.min(...vals)
+    const max = Math.max(...vals)
+    const range = max - min || 1
+    const w = 120
+    const h = 32
+    points = sparkline
+      .map((p, i) => {
+        const x = (i / (sparkline.length - 1)) * w
+        const y = h - ((p.value - min) / range) * h
+        return `${x.toFixed(1)},${y.toFixed(1)}`
+      })
+      .join(' ')
+  }
+
+  return (
+    <div className="dash-section live-reading-card">
+      <div className="live-reading-head">
+        <span className={`live-reading-dot ${available && !stale ? 'live-reading-dot-active' : 'live-reading-dot-idle'}`} />
+        <span className="live-reading-status">{statusText}</span>
+      </div>
+      <div className="live-reading-body">
+        <div>
+          <div className="live-reading-number" style={{ color }}>
+            {available ? live.aqiInstant : '—'}
+          </div>
+          <div className="live-reading-category" style={{ color }}>
+            {category || (available ? 'No data' : ' ')}
+          </div>
+        </div>
+        {points && (
+          <svg className="live-reading-sparkline" viewBox="0 0 120 32" preserveAspectRatio="none">
+            <polyline points={points} fill="none" stroke={color} strokeWidth="2" />
+          </svg>
+        )}
+      </div>
     </div>
   )
 }

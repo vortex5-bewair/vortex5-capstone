@@ -2,10 +2,21 @@
 // news/announcements + AQI preview on the right, scrolling ticker at the bottom.
 import { useEffect, useState, useRef } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { useLiveReadings } from '../hooks/useLiveReadings'
 import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper, ChevronLeft, ChevronRight } from 'lucide-react'
 import bewAirLogo from '../assets/bewair_logo_black.png'
 import { CATEGORY_COLORS, aqiCategory } from '../utils/airQualityGuidance'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
+
+// Freshest non-stale device from the live list — same "most recently
+// reported wins" selection today's stored-data poll already uses below,
+// just applied to the live source instead.
+const pickFreshestLive = (data) => {
+  if (!Array.isArray(data)) return null
+  const candidates = data.filter((d) => d.available && !d.stale)
+  if (candidates.length === 0) return null
+  return candidates.reduce((a, b) => (new Date(b.receivedAt) > new Date(a.receivedAt) ? b : a))
+}
 
 const BulletinBoard = () => {
   const { user } = useAuthContext()
@@ -20,6 +31,12 @@ const BulletinBoard = () => {
   const [aqiData, setAqiData] = useState(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Live (smoothed) reading — its own slower interval than DeviceDetail's,
+  // since a hallway screen doesn't need (and shouldn't visually show) the
+  // same cadence as a diagnostic view. Mounted once here at the page level.
+  const { data: liveList } = useLiveReadings({ intervalMs: 5000 })
+  const freshestLive = pickFreshestLive(liveList)
 
   // ---------- Fetch media ----------
   useEffect(() => {
@@ -240,8 +257,8 @@ const BulletinBoard = () => {
             {/* Air quality block on top — quick glance */}
             <div className="kiosk-combined-block kiosk-combined-aqi">
               <div className="kiosk-combined-label">Air Quality</div>
-              {aqiData ? (
-                <AqiPreview aqi={aqiData} />
+              {(freshestLive || aqiData) ? (
+                <AqiPreview live={freshestLive} reported={aqiData} />
               ) : (
                 <div className="kiosk-empty">Waiting for sensor data...</div>
               )}
@@ -292,37 +309,63 @@ const BulletinBoard = () => {
 }
 
 // ===== AQI Preview (right sidebar bottom) =====
-const AqiPreview = ({ aqi }) => {
-  const category = aqiCategory(aqi.Aqi)
-  const color = CATEGORY_COLORS[category] || '#94a3b8'
+// Live (smoothed) figure is primary — the number a hallway screen shows has
+// to stay calm, not bounce with raw jitter. The reported NowCast sits beneath
+// in its own smaller, separately labelled line, since it will disagree with
+// the live figure by design (a single 15s window vs. a 12-hour one) and an
+// unlabelled disagreement reads as a bug.
+const AqiPreview = ({ live, reported }) => {
+  const category = live ? aqiCategory(live.smoothed) : null
+  const color = category ? CATEGORY_COLORS[category] : '#94a3b8'
+  const metrics = live?.smoothedMetrics
+  const ageS = live ? Math.round((live.ageMs ?? 0) / 1000) : null
+
+  const reportedCategory = reported ? aqiCategory(reported.Aqi) : null
+  const reportedColor = CATEGORY_COLORS[reportedCategory] || '#94a3b8'
+
   return (
     <div className="kiosk-aqi-body">
-      <div className="kiosk-aqi-number" style={{ color }}>{aqi.Aqi ?? '--'}</div>
-      <div className="kiosk-aqi-cat" style={{ color }}>{category || 'No data'}</div>
-      <div className="kiosk-aqi-metrics">
-        <div className="kiosk-aqi-metric">
-          <span>PM 2.5</span>
-          <strong>{aqi.PM25 ?? '--'} <small>µg/m³</small></strong>
+      {live ? (
+        <>
+          <div className="kiosk-aqi-live-status">Live · {ageS}s ago</div>
+          <div className="kiosk-aqi-number" style={{ color }}>{live.smoothed}</div>
+          <div className="kiosk-aqi-cat" style={{ color }}>{category || 'No data'}</div>
+          <div className="kiosk-aqi-metrics">
+            <div className="kiosk-aqi-metric">
+              <span>PM 2.5</span>
+              <strong>{metrics?.PM25 ?? '--'} <small>µg/m³</small></strong>
+            </div>
+            <div className="kiosk-aqi-metric">
+              <span>CO₂</span>
+              <strong>{metrics?.CO2 ?? '--'} <small>ppm</small></strong>
+            </div>
+            <div className="kiosk-aqi-metric">
+              <span>Temp</span>
+              <strong>
+                {metrics?.Temperature != null ? metrics.Temperature.toFixed(1) : '--'}
+                <small>°C</small>
+              </strong>
+            </div>
+            <div className="kiosk-aqi-metric">
+              <span>Humidity</span>
+              <strong>
+                {metrics?.Humidity != null ? metrics.Humidity.toFixed(1) : '--'}
+                <small>%</small>
+              </strong>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="kiosk-empty">Waiting for a live reading...</div>
+      )}
+
+      {reported && (
+        <div className="kiosk-aqi-reported">
+          Reported AQI · 12-hour NowCast — {' '}
+          <strong style={{ color: reportedColor }}>{reported.Aqi}</strong>
+          {' '}· {reportedCategory || 'No data'}
         </div>
-        <div className="kiosk-aqi-metric">
-          <span>CO₂</span>
-          <strong>{aqi.CO2 ?? '--'} <small>ppm</small></strong>
-        </div>
-        <div className="kiosk-aqi-metric">
-          <span>Temp</span>
-          <strong>
-            {aqi.Temperature != null ? aqi.Temperature.toFixed(1) : '--'}
-            <small>°C</small>
-          </strong>
-        </div>
-        <div className="kiosk-aqi-metric">
-          <span>Humidity</span>
-          <strong>
-            {aqi.Humidity != null ? aqi.Humidity.toFixed(1) : '--'}
-            <small>%</small>
-          </strong>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

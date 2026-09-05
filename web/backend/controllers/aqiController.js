@@ -1,5 +1,6 @@
 const AqiModel = require('../models/AqiModel')
 const Device = require('../models/DeviceModel')
+const { getLiveReading } = require('../services/mqttSubscriber')
 const getVisibleDeviceIds = require('../utils/visibleDevices')
 const { resolveLimits } = require('../utils/thresholdLimits')
 const { AQI_CATEGORIES, categoryFor } = require('../config/airQualityBands')
@@ -42,6 +43,42 @@ const getLatestPerDevice = async (req, res) => {
       { $replaceRoot: { newRoot: '$doc' } }
     ])
     res.status(200).json(latest)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+// A live reading older than this is stale — shown as such rather than as a
+// frozen number that looks current. Independent of AQI_WRITE_INTERVAL_SEC.
+const LIVE_STALE_MS = Number(process.env.AQI_LIVE_STALE_SEC || 15) * 1000
+
+// Live (in-memory, per-frame) reading per device — never the database. No
+// category/colour is resolved here; every client already resolves AQI figures
+// through the same served bands (aqiCategory/CATEGORY_COLORS on web,
+// categoryFor on mobile), so leaving that to the caller is what keeps a live
+// figure and a reported figure the same colour for the same category, rather
+// than two implementations that could drift apart.
+const getLiveReadings = async (req, res) => {
+  try {
+    const userDeviceIds = await getVisibleDeviceIds(req.user)
+    const now = Date.now()
+    const readings = userDeviceIds.map((deviceId) => {
+      const live = getLiveReading(deviceId)
+      if (!live) return { deviceId, available: false }
+      const ageMs = now - live.receivedAt
+      return {
+        deviceId,
+        available: true,
+        stale: ageMs > LIVE_STALE_MS,
+        receivedAt: new Date(live.receivedAt).toISOString(),
+        ageMs,
+        aqiInstant: live.aqiInstant,
+        smoothed: live.smoothed,
+        metrics: live.metrics,
+        smoothedMetrics: live.smoothedMetrics,
+      }
+    })
+    res.status(200).json(readings)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -588,4 +625,4 @@ const getDeviceReadings = async (req, res) => {
   }
 }
 
-module.exports = { getAqi, getLatestPerDevice, getAnalytics, getDeviceReadings }
+module.exports = { getAqi, getLatestPerDevice, getLiveReadings, getAnalytics, getDeviceReadings }

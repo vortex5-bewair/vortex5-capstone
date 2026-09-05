@@ -13,12 +13,19 @@ let _client = null
 // The sensor pushes roughly one frame per second. Persisting every frame is
 // ~86,000 documents per device per day, which fills a free-tier Atlas cluster
 // in about two weeks. Instead we average the incoming frames and write one row
-// per interval. Live values still arrive at full rate; only storage is reduced.
+// per interval; only storage is reduced. Live values arrive at full rate via
+// the in-memory `latest` store below, read by GET /api/aqi/live — this used to
+// just be a comment with nothing behind it.
 const WRITE_INTERVAL_MS = Number(process.env.AQI_WRITE_INTERVAL_SEC || 30) * 1000
 
 // lastSeen must stay fresher than the 30s window dashboardController uses to
 // decide a device is offline, so it updates on its own shorter cadence.
 const LASTSEEN_INTERVAL_MS = 10 * 1000
+
+// Window for the "smoothed" live value: long enough to calm raw per-frame
+// jitter for a display like the kiosk, short enough to still be current.
+// Unrelated to WRITE_INTERVAL_MS/NowCast — this never touches the DB.
+const LIVE_SMOOTH_MS = Number(process.env.AQI_LIVE_SMOOTH_SEC || 15) * 1000
 
 const METRIC_FIELDS = ['PM1', 'PM25', 'PM10', 'TVOC', 'CO2', 'Formaldehyde', 'Temperature', 'Humidity']
 const DECIMAL_FIELDS = new Set(['Temperature', 'Humidity'])
@@ -26,10 +33,30 @@ const DECIMAL_FIELDS = new Set(['Temperature', 'Humidity'])
 // deviceId -> { sums, count, lastWrite, lastSeenWrite }
 const buffers = new Map()
 
+// deviceId -> { metrics, aqiInstant, smoothedMetrics, smoothed, receivedAt, window }
+// In-memory only, updated on every decoded frame. Never read from or written
+// to the database — a process restart empties this, on purpose (see
+// getLiveReading below: no DB fallback, ever).
+const latest = new Map()
+
 function zeroSums() {
   const sums = {}
   for (const f of METRIC_FIELDS) sums[f] = 0
   return sums
+}
+
+// Average a short window of raw frames the same way averageOf() averages a
+// 30s buffer: per-field mean, rounded the same way. Used for the live
+// "smoothed" value so a kiosk's number and its metric tiles come from the
+// exact same window and can never disagree with each other.
+function averageWindow(window) {
+  const avg = {}
+  for (const f of METRIC_FIELDS) {
+    const sum = window.reduce((s, w) => s + w[f], 0)
+    const v = sum / window.length
+    avg[f] = DECIMAL_FIELDS.has(f) ? Math.round(v * 10) / 10 : Math.round(v)
+  }
+  return avg
 }
 
 // Average the buffered frames. AQI is recomputed from the averaged metrics
@@ -139,6 +166,28 @@ function start() {
     for (const f of METRIC_FIELDS) buf.sums[f] += Number(metrics[f]) || 0
     buf.count++
 
+    // Live store: updated on every frame, independent of the 30s write
+    // interval above. aqiInstant is this single frame's AQI (jitter and all —
+    // that's the point for a diagnostic view); smoothed is computeAqi() over
+    // the rolling window, for a display that needs the calm number instead.
+    // Never computes NowCast — that needs hours of persisted history and
+    // barely moves second to second, so it stays only in the 30s path above.
+    let live = latest.get(deviceId)
+    if (!live) {
+      live = { window: [] }
+      latest.set(deviceId, live)
+    }
+    const frame = {}
+    for (const f of METRIC_FIELDS) frame[f] = Number(metrics[f]) || 0
+    live.window.push({ t: now, ...frame })
+    live.window = live.window.filter((w) => now - w.t <= LIVE_SMOOTH_MS)
+
+    live.metrics = frame
+    live.aqiInstant = computeAqi({ PM25: frame.PM25, PM10: frame.PM10 })
+    live.smoothedMetrics = averageWindow(live.window)
+    live.smoothed = computeAqi({ PM25: live.smoothedMetrics.PM25, PM10: live.smoothedMetrics.PM10 })
+    live.receivedAt = now
+
     // Heartbeat: keep the device marked online between stored readings.
     if (now - buf.lastSeenWrite >= LASTSEEN_INTERVAL_MS) {
       buf.lastSeenWrite = now
@@ -207,6 +256,21 @@ function start() {
   return _client
 }
 
+// A getter, not the Map — callers can't mutate the live store, and don't need
+// to know it's a Map at all. Returns null when the device has never reported
+// (including right after a process restart, when this store is empty).
+function getLiveReading(deviceId) {
+  const live = latest.get(deviceId)
+  if (!live) return null
+  return {
+    metrics: live.metrics,
+    aqiInstant: live.aqiInstant,
+    smoothedMetrics: live.smoothedMetrics,
+    smoothed: live.smoothed,
+    receivedAt: live.receivedAt,
+  }
+}
+
 function publishCommand(deviceId, command) {
   return new Promise((resolve, reject) => {
     if (!_client || !_client.connected) {
@@ -221,4 +285,4 @@ function publishCommand(deviceId, command) {
   })
 }
 
-module.exports = { start, publishCommand }
+module.exports = { start, publishCommand, getLiveReading }
