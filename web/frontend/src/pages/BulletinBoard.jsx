@@ -257,7 +257,7 @@ const BulletinBoard = () => {
           <div className="kiosk-section kiosk-combined">
             {/* Air quality block on top — quick glance */}
             <div className="kiosk-combined-block kiosk-combined-aqi">
-              <div className="kiosk-combined-label">Air Quality</div>
+              <div className="kiosk-combined-label kiosk-combined-label-aqi">Air Quality Index</div>
               {(freshestLive || aqiData) ? (
                 <AqiPreview live={freshestLive} reported={aqiData} />
               ) : (
@@ -364,7 +364,6 @@ const AqiPreview = ({ live, reported }) => {
         </>
       ) : reported ? (
         <>
-          <div className="kiosk-aqi-live-status">Latest reported</div>
           <div className="kiosk-aqi-number" style={{ color: reportedColor }}>{reported.Aqi}</div>
           <div className="kiosk-aqi-cat" style={{ color: reportedColor }}>
             {reportedCategory || 'No data'}

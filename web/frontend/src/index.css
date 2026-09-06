@@ -5414,6 +5414,12 @@ input, select {
   margin-bottom: 10px;
 }
 
+/* "Air Quality Index" reads as the kiosk's headline label, not a small
+   section eyebrow like "News & Events" shares the base class with. */
+.kiosk-combined-label-aqi {
+  font-size: 16px;
+}
+
 .kiosk-combined-news {
   flex: 1;
   min-height: 0;
