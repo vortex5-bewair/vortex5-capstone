@@ -114,15 +114,6 @@ const hourLabel = (h) => {
   return `${hr} ${period}`
 }
 
-// Category colours are the standard's own, so a chart band has to be the same
-// hue as the pill and the Thresholds page. Only the alpha changes.
-const hexToRgba = (hex, alpha) => {
-  const h = String(hex || '').replace('#', '')
-  if (h.length !== 6) return `rgba(148,163,184,${alpha})`
-  const n = parseInt(h, 16)
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
-}
-
 const fmtHours = (h) => (h == null ? '—' : h < 10 ? String(Math.round(h * 10) / 10) : String(Math.round(h)))
 
 // Local hour + Mongo-style day-of-week (Sun=1..Sat=7, matching $dayOfWeek and
@@ -441,32 +432,9 @@ const Analytics = () => {
     const lastCategory = lastReal && isAqi ? categories.find((c) => lastReal.value >= c.min && lastReal.value <= c.max) : null
     const endpointColor = lastCategory ? CATEGORY_COLORS[lastCategory.name] : ec.line
 
-    // Coverage rail: one bar per slot below the plot area, sharing its time
-    // axis — filled where a reading exists (dimmer if instant-basis, i.e.
-    // NowCast wasn't available yet), a flat neutral where the slot is
-    // excluded by design, hatched where a reading is genuinely missing.
-    const railData = slots.map((s) => {
-      if (s.state === 'data') {
-        return { value: [s.time, 1], itemStyle: { color: s.instant ? hexToRgba(ec.line, 0.35) : ec.line } }
-      }
-      if (s.state === 'excluded') {
-        return { value: [s.time, 1], itemStyle: { color: ec.split } }
-      }
-      return {
-        value: [s.time, 1],
-        itemStyle: {
-          color: 'transparent',
-          borderColor: ec.axis,
-          borderWidth: 1,
-          decal: { symbol: 'rect', dashArrayX: [1, 0], dashArrayY: [2, 4], rotation: Math.PI / 4, color: ec.axis },
-        },
-      }
-    })
-
     return {
       grid: [
-        { left: 48, right: 24, top: 24, bottom: 92 },
-        { left: 48, right: 24, bottom: 56, height: 10 },
+        { left: 48, right: 24, top: 24, bottom: 56 },
       ],
       visualMap: isAqi ? [
         {
@@ -500,17 +468,12 @@ const Analytics = () => {
           return `${t}<br/><b>${val}</b>${unit}${catLine}${instantLine}`
         },
       },
-      dataZoom: [{ type: 'inside', xAxisIndex: [0, 1] }, { type: 'slider', height: 18, bottom: 18, xAxisIndex: [0, 1] }],
+      dataZoom: [{ type: 'inside', xAxisIndex: [0] }, { type: 'slider', height: 18, bottom: 18, xAxisIndex: [0] }],
       xAxis: [
         {
           type: 'time', gridIndex: 0, min: fromMs, max: toMs,
           axisLine: { lineStyle: { color: ec.axis } },
           axisLabel: { color: ec.label, hideOverlap: true },
-        },
-        {
-          type: 'time', gridIndex: 1, min: fromMs, max: toMs,
-          axisLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false }, splitLine: { show: false },
-          axisPointer: { show: false },
         },
       ],
       yAxis: [
@@ -523,10 +486,6 @@ const Analytics = () => {
           nameGap: 12,
           axisLabel: { color: ec.label },
           splitLine: { lineStyle: { color: ec.split } },
-        },
-        {
-          type: 'value', gridIndex: 1, min: 0, max: 1,
-          axisLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false }, splitLine: { show: false },
         },
       ],
       series: [
@@ -547,12 +506,6 @@ const Analytics = () => {
               label: { formatter: `latest ${lastReal.value}`, color: ec.text, fontSize: 11, fontWeight: 700, position: 'top' },
             }],
           } : undefined,
-        },
-        {
-          type: 'bar', xAxisIndex: 1, yAxisIndex: 1,
-          barWidth: '100%', barGap: '-100%',
-          data: railData,
-          silent: true,
         },
       ],
     }
