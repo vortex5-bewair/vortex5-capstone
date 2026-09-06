@@ -434,7 +434,7 @@ const Analytics = () => {
 
     return {
       grid: [
-        { left: 48, right: 24, top: 24, bottom: 56 },
+        { left: 48, right: 24, top: 24, bottom: 32 },
       ],
       visualMap: isAqi ? [
         {
@@ -468,7 +468,9 @@ const Analytics = () => {
           return `${t}<br/><b>${val}</b>${unit}${catLine}${instantLine}`
         },
       },
-      dataZoom: [{ type: 'inside', xAxisIndex: [0] }, { type: 'slider', height: 18, bottom: 18, xAxisIndex: [0] }],
+      // 'inside' alone keeps scroll-to-zoom and drag-to-pan on the chart
+      // itself, without the visible slider bar underneath it.
+      dataZoom: [{ type: 'inside', xAxisIndex: [0] }],
       xAxis: [
         {
           type: 'time', gridIndex: 0, min: fromMs, max: toMs,
