@@ -1,4 +1,5 @@
 const mqtt = require('mqtt')
+const { EventEmitter } = require('events')
 const AqiModel = require('../models/AqiModel')
 const Device = require('../models/DeviceModel')
 const { decodeFrame } = require('../utils/sensorDecoder')
@@ -27,6 +28,19 @@ const LASTSEEN_INTERVAL_MS = 10 * 1000
 // Unrelated to WRITE_INTERVAL_MS/NowCast — this never touches the DB.
 const LIVE_SMOOTH_MS = Number(process.env.AQI_LIVE_SMOOTH_SEC || 15) * 1000
 
+// Any deviceId publishing to the wildcard telemetry topic gets a `latest`
+// slot, registered or not (mqttSubscriber deliberately never upserts
+// devices — see the heartbeat block below). Sweep out entries nobody has
+// heard from in a while so this can't grow without bound.
+const LIVE_EVICT_MS = Number(process.env.AQI_LIVE_EVICT_SEC || 300) * 1000
+const LIVE_EVICT_SWEEP_MS = 60 * 1000
+
+// Cap on concurrent SSE clients per process. Purely in-memory and per-process
+// on purpose — this backend runs single-instance (no render.yaml/PM2/cluster
+// config in the repo).
+const STREAM_MAX_CLIENTS = Number(process.env.AQI_STREAM_MAX_CLIENTS || 50)
+let streamClientCount = 0
+
 const METRIC_FIELDS = ['PM1', 'PM25', 'PM10', 'TVOC', 'CO2', 'Formaldehyde', 'Temperature', 'Humidity']
 const DECIMAL_FIELDS = new Set(['Temperature', 'Humidity'])
 
@@ -36,8 +50,15 @@ const buffers = new Map()
 // deviceId -> { metrics, aqiInstant, smoothedMetrics, smoothed, receivedAt, window }
 // In-memory only, updated on every decoded frame. Never read from or written
 // to the database — a process restart empties this, on purpose (see
-// getLiveReading below: no DB fallback, ever).
+// getLiveReading below: no DB fallback, ever). Entries are evicted after
+// LIVE_EVICT_MS of silence (see the sweep below start()).
 const latest = new Map()
+
+// Fan-out for per-frame pushes to SSE handlers. Emits just the deviceId;
+// listeners read back through getLiveReading() so there is exactly one
+// definition of what a live reading looks like.
+const liveEvents = new EventEmitter()
+liveEvents.setMaxListeners(STREAM_MAX_CLIENTS + 5)
 
 function zeroSums() {
   const sums = {}
@@ -143,6 +164,16 @@ function start() {
   _client.on('reconnect', ()    => console.log('[mqtt] reconnecting...'))
   _client.on('close',     ()    => console.log('[mqtt] connection closed'))
 
+  // Evict live entries nobody has reported into recently — any deviceId can
+  // publish to the wildcard topic, registered or not, so this store must not
+  // grow unbounded.
+  setInterval(() => {
+    const now = Date.now()
+    for (const [deviceId, live] of latest) {
+      if (now - live.receivedAt > LIVE_EVICT_MS) latest.delete(deviceId)
+    }
+  }, LIVE_EVICT_SWEEP_MS)
+
   _client.on('message', async (topic, payload) => {
     const parts = topic.split('/')
     if (parts.length !== 3 || parts[0] !== 'bewair' || parts[2] !== 'telemetry') return
@@ -187,6 +218,8 @@ function start() {
     live.smoothedMetrics = averageWindow(live.window)
     live.smoothed = computeAqi({ PM25: live.smoothedMetrics.PM25, PM10: live.smoothedMetrics.PM10 })
     live.receivedAt = now
+
+    liveEvents.emit('frame', deviceId)
 
     // Heartbeat: keep the device marked online between stored readings.
     if (now - buf.lastSeenWrite >= LASTSEEN_INTERVAL_MS) {
@@ -285,4 +318,24 @@ function publishCommand(deviceId, command) {
   })
 }
 
-module.exports = { start, publishCommand, getLiveReading }
+// Concurrent-connection cap for GET /api/aqi/stream. Returns false (and
+// leaves the count unchanged) once at capacity, so the route can reject
+// cleanly instead of degrading every open stream.
+function acquireStreamSlot() {
+  if (streamClientCount >= STREAM_MAX_CLIENTS) return false
+  streamClientCount++
+  return true
+}
+
+function releaseStreamSlot() {
+  streamClientCount = Math.max(0, streamClientCount - 1)
+}
+
+module.exports = {
+  start,
+  publishCommand,
+  getLiveReading,
+  liveEvents,
+  acquireStreamSlot,
+  releaseStreamSlot,
+}

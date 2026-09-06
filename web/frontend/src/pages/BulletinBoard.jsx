@@ -32,10 +32,11 @@ const BulletinBoard = () => {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  // Live (smoothed) reading — its own slower interval than DeviceDetail's,
-  // since a hallway screen doesn't need (and shouldn't visually show) the
-  // same cadence as a diagnostic view. Mounted once here at the page level.
-  const { data: liveList } = useLiveReadings({ intervalMs: 5000 })
+  // Live (smoothed) reading, pushed over the stream — mounted once here at
+  // the page level. The kiosk's calm figure comes from reading `smoothed`
+  // rather than `aqiInstant`, not from polling less often; fallbackPollMs
+  // only governs the rare case where the stream itself can't connect.
+  const { data: liveList } = useLiveReadings({ fallbackPollMs: 5000 })
   const freshestLive = pickFreshestLive(liveList)
 
   // ---------- Fetch media ----------
@@ -360,8 +361,8 @@ const AqiPreview = ({ live, reported }) => {
       )}
 
       {reported && (
-        <div className="kiosk-aqi-reported">
-          Reported AQI · 12-hour NowCast — {' '}
+        <div className="kiosk-aqi-reported" title="NowCast, DENR AO 2020-14">
+          Average AQI for 12 hours — {' '}
           <strong style={{ color: reportedColor }}>{reported.Aqi}</strong>
           {' '}· {reportedCategory || 'No data'}
         </div>

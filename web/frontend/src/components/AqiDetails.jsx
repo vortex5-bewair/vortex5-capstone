@@ -67,7 +67,7 @@ const AqiDetails = ({ aqi }) => {
             {aqiVal ?? '—'}
           </div>
           <div>
-            <div className="aqi-summary-label">Reported AQI · 12-hour NowCast</div>
+            <div className="aqi-summary-label" title="NowCast, DENR AO 2020-14">Average AQI for 12 hours</div>
             <div className="aqi-summary-category" style={{ color: catColor }}>
               {category || 'No data'}
             </div>

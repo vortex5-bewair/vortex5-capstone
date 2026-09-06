@@ -728,6 +728,14 @@ const Analytics = () => {
         if (y > pageH - M - 6) { pdf.addPage(); y = M }
         pdf.text(l, M, y); y += 4.5
       }
+      y += 3
+      for (const l of pdf.splitTextToSize(
+        'AQI is NowCast-based (DENR AO 2020-14): a weighted average leaning on the most recent hours, not a flat mean over the period.',
+        pageW - M * 2
+      )) {
+        if (y > pageH - M - 6) { pdf.addPage(); y = M }
+        pdf.text(l, M, y); y += 4.5
+      }
 
       // --- footers ---
       const pages = pdf.internal.getNumberOfPages()
@@ -944,6 +952,7 @@ const Analytics = () => {
                       <Typography variant="body2" color="text.secondary">
                         Interval averages{schoolHours ? ', school hours only' : ''}.
                         {metric === 'aqi' ? ' The line is coloured by DENR category; the dashed line is the alert limit.' : ' The dashed line is the alert limit.'}
+                        {metric === 'aqi' ? ' AQI is NowCast-based (DENR AO 2020-14) — a weighted average leaning on the most recent hours, not a flat mean.' : ''}
                       </Typography>
                       {worstBucket && (
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>

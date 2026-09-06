@@ -4,6 +4,7 @@ const {
     getAqi,
     getLatestPerDevice,
     getLiveReadings,
+    streamLiveReadings,
     getAnalytics,
     getDeviceReadings
 } = require('../controllers/aqiController')
@@ -15,7 +16,12 @@ router.use(requireAuth)
 // latest reading per device
 router.get('/latest', getLatestPerDevice)
 
-// in-memory live (per-frame) reading per device — never the database
+// live (per-frame) readings pushed over Server-Sent Events — never the
+// database. Primary transport for the live figure.
+router.get('/stream', streamLiveReadings)
+
+// single-shot in-memory live (per-frame) reading per device — never the
+// database. Fallback for when /stream can't connect, and for mobile.
 router.get('/live', getLiveReadings)
 
 // recent readings for one specific device (device detail diagnostic table)

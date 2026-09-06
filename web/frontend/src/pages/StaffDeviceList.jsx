@@ -87,8 +87,8 @@ const StaffDeviceList = () => {
                 <div className="dash-aqi-big" style={{ color: aqiColor }}>
                   {aqi != null ? aqi : '--'}
                 </div>
-                <div className="dash-aqi-label" style={{ color: aqiColor }}>
-                  {category || 'No data'} · 12-hr NowCast
+                <div className="dash-aqi-label" style={{ color: aqiColor }} title="NowCast, DENR AO 2020-14">
+                  {category || 'No data'} · 12-hr average
                 </div>
                 <LivenessIndicator live={live} />
 

@@ -1,6 +1,11 @@
 const AqiModel = require('../models/AqiModel')
 const Device = require('../models/DeviceModel')
-const { getLiveReading } = require('../services/mqttSubscriber')
+const {
+  getLiveReading,
+  liveEvents,
+  acquireStreamSlot,
+  releaseStreamSlot,
+} = require('../services/mqttSubscriber')
 const getVisibleDeviceIds = require('../utils/visibleDevices')
 const { resolveLimits } = require('../utils/thresholdLimits')
 const { AQI_CATEGORIES, categoryFor } = require('../config/airQualityBands')
@@ -52,36 +57,81 @@ const getLatestPerDevice = async (req, res) => {
 // frozen number that looks current. Independent of AQI_WRITE_INTERVAL_SEC.
 const LIVE_STALE_MS = Number(process.env.AQI_LIVE_STALE_SEC || 15) * 1000
 
-// Live (in-memory, per-frame) reading per device — never the database. No
+// Shared by the single-shot endpoint and the SSE stream, so there is exactly
+// one definition of what a live reading looks like on the wire. No
 // category/colour is resolved here; every client already resolves AQI figures
 // through the same served bands (aqiCategory/CATEGORY_COLORS on web,
 // categoryFor on mobile), so leaving that to the caller is what keeps a live
 // figure and a reported figure the same colour for the same category, rather
 // than two implementations that could drift apart.
+function shapeLiveReading(deviceId) {
+  const live = getLiveReading(deviceId)
+  if (!live) return { deviceId, available: false }
+  const ageMs = Date.now() - live.receivedAt
+  return {
+    deviceId,
+    available: true,
+    stale: ageMs > LIVE_STALE_MS,
+    receivedAt: new Date(live.receivedAt).toISOString(),
+    ageMs,
+    aqiInstant: live.aqiInstant,
+    smoothed: live.smoothed,
+    metrics: live.metrics,
+    smoothedMetrics: live.smoothedMetrics,
+  }
+}
+
+// Live (in-memory, per-frame) reading per device — never the database. Kept
+// as a fallback for when GET /api/aqi/stream can't connect, and for mobile
+// (Flutter SSE is more work than a fetch).
 const getLiveReadings = async (req, res) => {
   try {
     const userDeviceIds = await getVisibleDeviceIds(req.user)
-    const now = Date.now()
-    const readings = userDeviceIds.map((deviceId) => {
-      const live = getLiveReading(deviceId)
-      if (!live) return { deviceId, available: false }
-      const ageMs = now - live.receivedAt
-      return {
-        deviceId,
-        available: true,
-        stale: ageMs > LIVE_STALE_MS,
-        receivedAt: new Date(live.receivedAt).toISOString(),
-        ageMs,
-        aqiInstant: live.aqiInstant,
-        smoothed: live.smoothed,
-        metrics: live.metrics,
-        smoothedMetrics: live.smoothedMetrics,
-      }
-    })
-    res.status(200).json(readings)
+    res.status(200).json(userDeviceIds.map(shapeLiveReading))
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
+}
+
+// Server-Sent Events: pushes a reading the instant a device's frame decodes,
+// instead of making the client wait out a poll interval. Devices visible to
+// this connection are scoped once, at connect time, exactly like
+// getLatestPerDevice — a connection never gains a device mid-stream.
+const streamLiveReadings = async (req, res) => {
+  if (!acquireStreamSlot()) {
+    return res.status(503).json({ error: 'Too many live streams open right now — try again shortly.' })
+  }
+
+  const userDeviceIds = await getVisibleDeviceIds(req.user)
+  const visible = new Set(userDeviceIds)
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  })
+  res.flushHeaders?.()
+
+  const send = (payload) => res.write(`data: ${JSON.stringify(payload)}\n\n`)
+
+  // Initial snapshot so the client has something to render before the next frame.
+  send({ type: 'snapshot', readings: userDeviceIds.map(shapeLiveReading) })
+
+  const onFrame = (deviceId) => {
+    if (!visible.has(deviceId)) return
+    send({ type: 'update', reading: shapeLiveReading(deviceId) })
+  }
+  liveEvents.on('frame', onFrame)
+
+  const heartbeat = setInterval(() => res.write(': ping\n\n'), 20000)
+
+  const cleanup = () => {
+    clearInterval(heartbeat)
+    liveEvents.off('frame', onFrame)
+    releaseStreamSlot()
+  }
+  req.on('close', cleanup)
 }
 
 // Per-pollutant fields we compute statistics for.
@@ -625,4 +675,4 @@ const getDeviceReadings = async (req, res) => {
   }
 }
 
-module.exports = { getAqi, getLatestPerDevice, getLiveReadings, getAnalytics, getDeviceReadings }
+module.exports = { getAqi, getLatestPerDevice, getLiveReadings, streamLiveReadings, getAnalytics, getDeviceReadings }

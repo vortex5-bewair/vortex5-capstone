@@ -126,7 +126,8 @@ const AdminDashboard = () => {
           icon={<Activity size={20} />}
           label="Average AQI"
           value={kpis.avgAqi != null ? kpis.avgAqi : '--'}
-          sub={`${kpis.avgCategory || 'No data'} · 12-hr NowCast`}
+          sub={`${kpis.avgCategory || 'No data'} · 12-hr average`}
+          subTitle="NowCast, DENR AO 2020-14"
           accent={kpis.avgCategory ? (CATEGORY_COLORS[kpis.avgCategory] || '#94a3b8') : '#94a3b8'}
         />
       </div>
@@ -175,8 +176,8 @@ const AdminDashboard = () => {
                   <div className="dash-aqi-big" style={{ color: aqiColor }}>
                     {d.aqi != null ? d.aqi : '--'}
                   </div>
-                  <div className="dash-aqi-label" style={{ color: aqiColor }}>
-                    {d.category || 'No data'} · 12-hr NowCast
+                  <div className="dash-aqi-label" style={{ color: aqiColor }} title="NowCast, DENR AO 2020-14">
+                    {d.category || 'No data'} · 12-hr average
                   </div>
                   <LivenessIndicator live={live} />
 
@@ -211,7 +212,7 @@ const AdminDashboard = () => {
 }
 
 // ============ Sub-components ============
-const KpiTile = ({ icon, label, value, sub, accent, onClick }) => (
+const KpiTile = ({ icon, label, value, sub, subTitle, accent, onClick }) => (
   <div
     className={`dash-kpi ${onClick ? 'dash-kpi-clickable' : ''}`}
     style={{ borderTopColor: accent }}
@@ -223,7 +224,7 @@ const KpiTile = ({ icon, label, value, sub, accent, onClick }) => (
     <div className="dash-kpi-icon" style={{ color: accent }}>{icon}</div>
     <div className="dash-kpi-label">{label}</div>
     <div className="dash-kpi-value" style={{ color: accent }}>{value}</div>
-    {sub && <div className="dash-kpi-sub">{sub}</div>}
+    {sub && <div className="dash-kpi-sub" title={subTitle}>{sub}</div>}
   </div>
 )
 
