@@ -21,7 +21,7 @@ const Profile = () => {
   const { user } = useAuthContext()
 
   // Cached fetch — shows previous profile instantly on revisit, refreshes in bg.
-  const { data: profile, loading, error: fetchError } =
+  const { data: profile, loading, error: fetchError, refetch } =
     useCachedFetch(user ? '/api/user/me' : null, user?.token)
 
   const [error, setError] = useState('')
@@ -40,6 +40,7 @@ const Profile = () => {
   // Password change state
   const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [pwdError, setPwdError] = useState('')
+  const [pwdSuccess, setPwdSuccess] = useState('')
   const [pwdSaving, setPwdSaving] = useState(false)
   const [pwdShow, setPwdShow] = useState({ current: false, next: false, confirm: false })
 
@@ -75,9 +76,25 @@ const Profile = () => {
   }, [fetchError])
 
   const handleSaveProfile = async () => {
-    setSaving(true)
     setError('')
     setSuccessMessage('')
+
+    // Client-side guard rails. Staff type and department must stay set to a
+    // real option — the "Select..." placeholder is not a valid value to save.
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
+      setError('First name, last name and email are required.')
+      return
+    }
+    if (!form.staffType) {
+      setError('Please select a staff type.')
+      return
+    }
+    if (!form.department) {
+      setError('Please select a department.')
+      return
+    }
+
+    setSaving(true)
     try {
       const res = await fetch('/api/user/me', {
         method: 'PATCH',
@@ -89,9 +106,14 @@ const Profile = () => {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to update profile')
-      // Profile is read-only state from the cached fetch — invalidate so next
-      // load (or background refetch) pulls the new server-side data.
+
+      // The cached-fetch hook owns `profile`; invalidating alone won't update
+      // what's on screen. Re-fetch so the display card immediately reflects
+      // the saved values (this also refreshes the module cache). refetch()
+      // handles its own errors and resolves to null rather than throwing.
       invalidateCache('/api/user/me')
+      await refetch()
+
       setEditing(false)
       setSuccessMessage('Profile updated successfully')
 
@@ -135,6 +157,7 @@ const Profile = () => {
       if (!res.ok) throw new Error(data.error || 'Failed to update picture')
 
       invalidateCache('/api/user/me')
+      await refetch()
       setPictureUrl(data.pictureUrl || '')
       setSuccessMessage('Profile picture updated')
 
@@ -152,6 +175,7 @@ const Profile = () => {
   const handleChangePassword = async (e) => {
     e.preventDefault()
     setPwdError('')
+    setPwdSuccess('')
     setSuccessMessage('')
 
     const trimmedNewPassword = pwdForm.newPassword.trim()
@@ -181,8 +205,14 @@ const Profile = () => {
       if (!res.ok) throw new Error(data.error || 'Failed to change password')
 
       setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      // Shown both at the page top and inside the password card, so it's
+      // visible whether or not the user has scrolled.
       setSuccessMessage('Password changed successfully')
-      setTimeout(() => setSuccessMessage(''), 3000)
+      setPwdSuccess('Password changed successfully')
+      setTimeout(() => {
+        setSuccessMessage('')
+        setPwdSuccess('')
+      }, 4000)
     } catch (err) {
       setPwdError(err.message)
     } finally {
@@ -303,7 +333,7 @@ const Profile = () => {
                 onChange={e => setForm({ ...form, staffType: e.target.value })}
                 className="profile-input"
               >
-                <option value="">Select staff type</option>
+                <option value="" disabled>Select staff type</option>
                 {STAFF_TYPES.map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -318,7 +348,7 @@ const Profile = () => {
                 onChange={e => setForm({ ...form, department: e.target.value })}
                 className="profile-input"
               >
-                <option value="">Select department</option>
+                <option value="" disabled>Select department</option>
                 {DEPARTMENTS.map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
@@ -417,6 +447,7 @@ const Profile = () => {
           </ProfileField>
 
           {pwdError && <div className="profile-error">{pwdError}</div>}
+          {pwdSuccess && <div className="profile-success">{pwdSuccess}</div>}
 
           <div className="profile-actions">
             <button
