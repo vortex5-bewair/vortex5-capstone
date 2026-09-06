@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Pin } from 'lucide-react'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
+
+// Same category list the mobile app's announcement form uses — kept identical
+// so the two apps produce consistent data. Date and time are no longer entered
+// by hand on either side; the server stamps them on create.
+const CATEGORIES = ['Events', 'System Updates', 'Achievements', 'Reminders']
+const DEFAULT_CATEGORY = 'Events'
 
 const WebBulletinBoard = () => {
   const { user } = useAuthContext()
@@ -14,6 +20,7 @@ const WebBulletinBoard = () => {
   const [mediaError, setMediaError] = useState('')
   const [mediaDeleteTarget, setMediaDeleteTarget] = useState(null) // { id, title }
   const [mediaDeleting, setMediaDeleting] = useState(false)
+  const [mediaUploading, setMediaUploading] = useState(false)
 
   useEffect(() => {
     const fetchMedia = async () => {
@@ -32,6 +39,11 @@ const WebBulletinBoard = () => {
     }
 
     const handleUpload = async () => {
+  // Guard against a second submit while the first request is still in flight —
+  // a large video upload can take a while and the modal stays open until it
+  // resolves, which otherwise invites repeat clicks and duplicate uploads.
+  if (mediaUploading) return false
+
   if (!videoFile) {
     setMediaError('Please choose a video file first.')
     return false
@@ -41,6 +53,7 @@ const WebBulletinBoard = () => {
   formData.append('title', videoFile.name)
   formData.append('video', videoFile)
 
+  setMediaUploading(true)
   try {
     const res = await fetch('/api/media', {
       method: 'POST',
@@ -61,6 +74,8 @@ const WebBulletinBoard = () => {
   } catch (err) {
     setMediaError(err.message || 'Upload failed.')
     return false
+  } finally {
+    setMediaUploading(false)
   }
 }
 const [showMediaModal, setShowMediaModal] = useState(false)
@@ -76,16 +91,20 @@ const [formError, setFormError] = useState('')
 const [editError, setEditError] = useState('')
 const [listError, setListError] = useState('')
 
+const [submitting, setSubmitting] = useState(false)
+const [updating, setUpdating] = useState(false)
+
 const [editData, setEditData] = useState({
   title: '',
   description: '',
-  date: '',
-  time: ''
+  category: DEFAULT_CATEGORY,
+  pinned: false
 })
 const handleChange = (e) => {
+  const { name, value, type, checked } = e.target
   setFormData({
     ...formData,
-    [e.target.name]: e.target.value
+    [name]: type === 'checkbox' ? checked : value
   })
 }
 
@@ -93,40 +112,48 @@ const handleSubmit = async (e) => {
   e.preventDefault()
   setFormError('')
 
-  if (!formData.title || !formData.date) {
-    setFormError('Title and date are required.')
+  if (!formData.title) {
+    setFormError('Title is required.')
     return
   }
+  if (submitting) return
+  setSubmitting(true)
 
-  const res = await fetch('/api/announcements', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${user?.token}`
-    },
-    body: JSON.stringify(formData)
-  })
-
-  const json = await res.json()
-
-  if (res.ok) {
-      setAnnouncements(prev => [json, ...prev])
-    setShowModal(false)
-    setFormData({
-      title: '',
-      description: '',
-      date: '',
-      time: ''
+  try {
+    const res = await fetch('/api/announcements', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${user?.token}`
+      },
+      body: JSON.stringify(formData)
     })
-  } else {
-    setFormError(json.error || 'Failed to add announcement.')
+
+    const json = await res.json()
+
+    if (res.ok) {
+      setAnnouncements(prev => [json, ...prev])
+      setShowModal(false)
+      setFormData({
+        title: '',
+        description: '',
+        category: DEFAULT_CATEGORY,
+        pinned: false
+      })
+    } else {
+      setFormError(json.error || 'Failed to add announcement.')
+    }
+  } catch (err) {
+    setFormError(err.message || 'Failed to add announcement.')
+  } finally {
+    setSubmitting(false)
   }
 }
 const [formData, setFormData] = useState({
   title: '',
   description: '',
-  date: '',
-  time: ''
+  category: DEFAULT_CATEGORY,
+  pinned: false
 })
 useEffect(() => {
   const fetchAnnouncements = async () => {
@@ -157,41 +184,51 @@ const handleEdit = (a) => {
   setEditData({
     title: a.title || '',
     description: a.description || '',
-    date: a.date || '',
-    time: a.time || ''
+    category: a.category || DEFAULT_CATEGORY,
+    pinned: a.pinned === true
   })
   setEditError('')
   setShowEditModal(true)
 }
 
 const handleEditChange = (e) => {
+  const { name, value, type, checked } = e.target
   setEditData(prev => ({
     ...prev,
-    [e.target.name]: e.target.value
+    [name]: type === 'checkbox' ? checked : value
   }))
 }
 
 const handleUpdate = async () => {
   setEditError('')
-  const res = await fetch(`/api/announcements/${selectedId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${user?.token}`
-    },
-    body: JSON.stringify(editData)
-  })
+  if (updating) return
+  setUpdating(true)
 
-  const json = await res.json()
+  try {
+    const res = await fetch(`/api/announcements/${selectedId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${user?.token}`
+      },
+      body: JSON.stringify(editData)
+    })
 
-  if (res.ok) {
-    setAnnouncements(prev =>
-      prev.map(a => (a._id === selectedId ? json : a))
-    )
-    setShowEditModal(false)
-    setSelectedId(null)
-  } else {
-    setEditError(json.error || 'Failed to update announcement.')
+    const json = await res.json()
+
+    if (res.ok) {
+      setAnnouncements(prev =>
+        prev.map(a => (a._id === selectedId ? json : a))
+      )
+      setShowEditModal(false)
+      setSelectedId(null)
+    } else {
+      setEditError(json.error || 'Failed to update announcement.')
+    }
+  } catch (err) {
+    setEditError(err.message || 'Failed to update announcement.')
+  } finally {
+    setUpdating(false)
   }
 }
 
@@ -245,39 +282,47 @@ const handleUpdate = async () => {
             />
           </div>
 
-          <div className="threshold-grid">
-            <div className="field">
-              <label>Date</label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                required
-                className="search-input"
-              />
-            </div>
+          <div className="label-row">
+            <label>Category</label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="search-input"
+            >
+              {CATEGORIES.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
 
-            <div className="field">
-              <label>Time</label>
+          <div className="label-row">
+            <label className="checkbox-row">
               <input
-                type="time"
-                name="time"
-                value={formData.time}
+                type="checkbox"
+                name="pinned"
+                checked={formData.pinned}
                 onChange={handleChange}
-                className="search-input"
               />
-            </div>
+              Pin this announcement
+            </label>
           </div>
 
           {formError && <p style={{ color: 'red', marginTop: 10 }}>{formError}</p>}
         </div>
 
         <div className="modal-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowModal(false)}
+            disabled={submitting}
+          >
             Cancel
           </button>
-          <button className="btn btn-primary">Add Announcement</button>
+          <button className="btn btn-primary" disabled={submitting}>
+            {submitting ? 'Adding...' : 'Add Announcement'}
+          </button>
         </div>
 
       </form>
@@ -323,38 +368,50 @@ const handleUpdate = async () => {
             />
           </div>
 
-          <div className="threshold-grid">
-            <div className="field">
-              <label>Date</label>
-              <input
-                type="date"
-                name="date"
-                value={editData.date}
-                onChange={handleEditChange}
-                className="search-input"
-              />
-            </div>
+          <div className="label-row">
+            <label>Category</label>
+            <select
+              name="category"
+              value={editData.category}
+              onChange={handleEditChange}
+              className="search-input"
+            >
+              {CATEGORIES.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+              {editData.category && !CATEGORIES.includes(editData.category) && (
+                <option value={editData.category}>{editData.category}</option>
+              )}
+            </select>
+          </div>
 
-            <div className="field">
-              <label>Time</label>
+          <div className="label-row">
+            <label className="checkbox-row">
               <input
-                type="time"
-                name="time"
-                value={editData.time}
+                type="checkbox"
+                name="pinned"
+                checked={editData.pinned}
                 onChange={handleEditChange}
-                className="search-input"
               />
-            </div>
+              Pin this announcement
+            </label>
           </div>
 
           {editError && <p style={{ color: 'red', marginTop: 10 }}>{editError}</p>}
         </div>
 
         <div className="modal-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowEditModal(false)}
+            disabled={updating}
+          >
             Cancel
           </button>
-          <button className="btn btn-primary">Save Changes</button>
+          <button className="btn btn-primary" disabled={updating}>
+            {updating ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
 
       </form>
@@ -371,6 +428,7 @@ const handleUpdate = async () => {
     <thead>
       <tr>
         <th>Title</th>
+        <th>Category</th>
         {isAdmin && <th className="action-col">Status</th>}
       </tr>
     </thead>
@@ -378,7 +436,16 @@ const handleUpdate = async () => {
     <tbody>
       {announcements.map(a => (
         <tr key={a._id}>
-          <td>{a.title}</td>
+          <td>
+            <span className="announcement-title-cell">
+              {a.pinned && (
+                <Pin size={14} className="pinned-icon" aria-label="Pinned" />
+              )}
+              {a.title}
+            </span>
+          </td>
+
+          <td>{a.category || '—'}</td>
 
           {isAdmin && (
             <td>
@@ -404,7 +471,7 @@ const handleUpdate = async () => {
 
       {announcements.length === 0 && (
         <tr>
-          <td colSpan="2" style={{ textAlign: 'center', padding: '15px' }}>
+          <td colSpan={isAdmin ? 3 : 2} style={{ textAlign: 'center', padding: '15px' }}>
             No announcements yet
           </td>
         </tr>
@@ -431,6 +498,7 @@ const handleUpdate = async () => {
       <form
         onSubmit={async (e) => {
           e.preventDefault()
+          if (mediaUploading) return
           const ok = await handleUpload()
           if (ok) setShowMediaModal(false)
         }}
@@ -448,18 +516,29 @@ const handleUpdate = async () => {
               accept="video/*"
               onChange={handleFileChange}
               required
+              disabled={mediaUploading}
               className="search-input"
             />
           </div>
 
+          {mediaUploading && (
+            <p style={{ marginTop: 10 }}>Uploading video, please wait…</p>
+          )}
           {mediaError && <p style={{ color: 'red', marginTop: 10 }}>{mediaError}</p>}
         </div>
 
         <div className="modal-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => setShowMediaModal(false)}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowMediaModal(false)}
+            disabled={mediaUploading}
+          >
             Cancel
           </button>
-          <button className="btn btn-primary">Upload</button>
+          <button className="btn btn-primary" disabled={mediaUploading}>
+            {mediaUploading ? 'Uploading...' : 'Upload'}
+          </button>
         </div>
 
       </form>
