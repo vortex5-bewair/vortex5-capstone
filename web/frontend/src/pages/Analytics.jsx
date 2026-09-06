@@ -5,7 +5,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableRow, CssBaseline, Tooltip,
   ToggleButtonGroup, ToggleButton,
 } from '@mui/material'
-import { ThemeProvider, createTheme, alpha } from '@mui/material/styles'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
@@ -1162,45 +1162,39 @@ const FilterToggle = ({ checked, onChange, disabled, label }) => (
     sx={{
       display: 'inline-flex',
       alignItems: 'center',
-      gap: 0.75,
-      pl: 0.5,
-      pr: 1.25,
-      py: 0.375,
-      borderRadius: 999,
-      border: '1px solid',
-      borderColor: checked ? 'primary.main' : 'divider',
-      bgcolor: checked ? (theme) => alpha(theme.palette.primary.main, 0.1) : 'transparent',
+      gap: 1,
       opacity: disabled ? 0.5 : 1,
       cursor: disabled ? 'default' : 'pointer',
-      transition: 'border-color .15s ease, background-color .15s ease',
     }}
   >
+    <Typography variant="caption" sx={{ fontWeight: 500, color: 'text.primary', whiteSpace: 'nowrap' }}>
+      {label}
+    </Typography>
     <Switch
-      size="small"
       checked={checked}
       onChange={onChange}
       disabled={disabled}
+      disableRipple
       sx={{
-        width: 34, height: 22, padding: 0,
+        width: 40, height: 24, padding: 0,
         '& .MuiSwitch-switchBase': {
-          padding: 0.5,
-          '&.Mui-checked': { transform: 'translateX(12px)' },
-          '&.Mui-checked + .MuiSwitch-track': { opacity: 1 },
+          padding: '3px',
+          '&.Mui-checked': {
+            transform: 'translateX(16px)',
+            '& + .MuiSwitch-track': { backgroundColor: 'primary.main', opacity: 1 },
+          },
         },
-        '& .MuiSwitch-thumb': { width: 16, height: 16, boxShadow: '0 1px 2px rgba(0,0,0,.35)' },
+        '& .MuiSwitch-thumb': {
+          width: 18, height: 18,
+          boxShadow: '0 1px 3px rgba(0,0,0,.3)',
+        },
         '& .MuiSwitch-track': {
           borderRadius: 999,
           opacity: 1,
-          backgroundColor: (theme) => alpha(theme.palette.text.secondary, 0.35),
+          backgroundColor: (theme) => (theme.palette.mode === 'dark' ? '#4b5563' : '#d1d5db'),
         },
       }}
     />
-    <Typography
-      variant="caption"
-      sx={{ fontWeight: checked ? 700 : 500, color: checked ? 'primary.main' : 'text.secondary', whiteSpace: 'nowrap' }}
-    >
-      {label}
-    </Typography>
   </Box>
 )
 
