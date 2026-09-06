@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Box, Card, CardContent, Typography, Grid, FormControl, InputLabel, Select,
-  MenuItem, Switch, FormControlLabel, CircularProgress, Alert, Button, Chip,
+  MenuItem, Switch, CircularProgress, Alert, Button, Chip,
   Table, TableBody, TableCell, TableHead, TableRow, CssBaseline, Tooltip,
   ToggleButtonGroup, ToggleButton,
 } from '@mui/material'
-import { ThemeProvider, createTheme } from '@mui/material/styles'
+import { ThemeProvider, createTheme, alpha } from '@mui/material/styles'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
@@ -858,20 +858,21 @@ const Analytics = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={2.5} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <FormControlLabel
-                    sx={{ m: 0 }}
-                    control={<Switch size="small" checked={schoolHours} onChange={(e) => setSchoolHours(e.target.checked)} />}
-                    label={<Typography variant="caption">School hours only</Typography>}
+                <Grid item xs={12} md="auto" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <FilterToggle
+                    checked={schoolHours}
+                    onChange={(e) => setSchoolHours(e.target.checked)}
+                    label="School hours only"
                   />
                   <Tooltip title={liveAllowed ? '' : 'Live refresh is available on ranges of 24 hours or less'}>
-                    <FormControlLabel
-                      sx={{ m: 0 }}
-                      control={<Switch size="small" checked={liveMode} disabled={!liveAllowed} onChange={(e) => { setLiveMode(e.target.checked); if (e.target.checked) setTo(dayjs()) }} />}
-                      label={<Typography variant="caption" color="text.secondary">
-                        {liveMode ? `Live · ${lastUpdated ? dayjs(lastUpdated).format('HH:mm:ss') : ''}` : 'Live off'}
-                      </Typography>}
-                    />
+                    <span>
+                      <FilterToggle
+                        checked={liveMode}
+                        disabled={!liveAllowed}
+                        onChange={(e) => { setLiveMode(e.target.checked); if (e.target.checked) setTo(dayjs()) }}
+                        label={liveMode ? `Live · ${lastUpdated ? dayjs(lastUpdated).format('HH:mm:ss') : ''}` : 'Live off'}
+                      />
+                    </span>
                   </Tooltip>
                 </Grid>
               </Grid>
@@ -1151,6 +1152,57 @@ const Analytics = () => {
 }
 
 // ---------------------------------------------------------------------------
+
+// A filter switch as a self-contained pill rather than a bare switch floating
+// next to text: the pill's own border/fill carries the on/off state too, so
+// it still reads correctly at a glance even before the switch color registers.
+const FilterToggle = ({ checked, onChange, disabled, label }) => (
+  <Box
+    component="label"
+    sx={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 0.75,
+      pl: 0.5,
+      pr: 1.25,
+      py: 0.375,
+      borderRadius: 999,
+      border: '1px solid',
+      borderColor: checked ? 'primary.main' : 'divider',
+      bgcolor: checked ? (theme) => alpha(theme.palette.primary.main, 0.1) : 'transparent',
+      opacity: disabled ? 0.5 : 1,
+      cursor: disabled ? 'default' : 'pointer',
+      transition: 'border-color .15s ease, background-color .15s ease',
+    }}
+  >
+    <Switch
+      size="small"
+      checked={checked}
+      onChange={onChange}
+      disabled={disabled}
+      sx={{
+        width: 34, height: 22, padding: 0,
+        '& .MuiSwitch-switchBase': {
+          padding: 0.5,
+          '&.Mui-checked': { transform: 'translateX(12px)' },
+          '&.Mui-checked + .MuiSwitch-track': { opacity: 1 },
+        },
+        '& .MuiSwitch-thumb': { width: 16, height: 16, boxShadow: '0 1px 2px rgba(0,0,0,.35)' },
+        '& .MuiSwitch-track': {
+          borderRadius: 999,
+          opacity: 1,
+          backgroundColor: (theme) => alpha(theme.palette.text.secondary, 0.35),
+        },
+      }}
+    />
+    <Typography
+      variant="caption"
+      sx={{ fontWeight: checked ? 700 : 500, color: checked ? 'primary.main' : 'text.secondary', whiteSpace: 'nowrap' }}
+    >
+      {label}
+    </Typography>
+  </Box>
+)
 
 // A KPI tile matching the Dashboard page's .dash-kpi tiles (same classes,
 // same accent-top-border pattern), via the .analytics-kpi variant that only
