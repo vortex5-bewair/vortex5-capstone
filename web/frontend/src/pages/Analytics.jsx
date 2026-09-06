@@ -27,6 +27,25 @@ import {
 
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+const RANGE_STORAGE_KEY = 'bewair_analytics_range'
+
+// Reads the last range someone picked, so a page refresh keeps showing it
+// instead of quietly reverting to the default. Returns null on anything
+// missing, corrupted, or invalid — callers fall through to the default range.
+function loadStoredRange() {
+  try {
+    const raw = localStorage.getItem(RANGE_STORAGE_KEY)
+    if (!raw) return null
+    const { from: f, to: t } = JSON.parse(raw)
+    const from = dayjs(f)
+    const to = dayjs(t)
+    if (!from.isValid() || !to.isValid()) return null
+    return { from, to }
+  } catch {
+    return null
+  }
+}
+
 // Pollutant metadata: label + unit for tables and charts.
 const POLLUTANTS = [
   { key: 'Aqi', label: 'AQI', unit: '' },
@@ -159,10 +178,26 @@ const Analytics = () => {
   const muiTheme = useMemo(() => buildMuiTheme(isDark), [isDark])
   const isAdmin = user && user.role === 'admin'
 
-  // Default range is 7 days, not 24 hours: with school hours on, one day holds
-  // at most ten usable hours and on a weekend holds none.
-  const [from, setFrom] = useState(dayjs().subtract(7, 'day'))
-  const [to, setTo] = useState(dayjs())
+  // Range persists across a refresh (localStorage) rather than recomputing
+  // "now" on every mount — otherwise every reload silently snapped back to a
+  // fresh default and any range someone picked was gone. A stored range with
+  // no valid dates in it (corrupted, or from before this existed) falls
+  // through to the 24-hour default below.
+  const [from, setFrom] = useState(() => loadStoredRange()?.from ?? dayjs().subtract(24, 'hour'))
+  const [to, setTo] = useState(() => loadStoredRange()?.to ?? dayjs())
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        RANGE_STORAGE_KEY,
+        JSON.stringify({ from: from.toISOString(), to: to.toISOString() }),
+      )
+    } catch {
+      // Private browsing / storage disabled — the range just won't survive
+      // a refresh this session, which is the pre-existing behaviour.
+    }
+  }, [from, to])
+
   const [deviceId, setDeviceId] = useState('all')
   const [metric, setMetric] = useState('aqi')
   const [trendView, setTrendView] = useState('chart')
