@@ -3,10 +3,24 @@
 import { useEffect, useState, useRef } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useLiveReadings } from '../hooks/useLiveReadings'
-import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper, ChevronLeft, ChevronRight, Pin } from 'lucide-react'
 import bewAirLogo from '../assets/bewair_logo_black.png'
 import { CATEGORY_COLORS, aqiCategory } from '../utils/airQualityGuidance'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
+
+// Announcement category → colour, mirrored from the mobile app's
+// bulletin_board_page.dart (categoryColor) so the same announcement reads the
+// same on a hallway screen and on a phone. Any category outside this set
+// falls back to slate.
+const ANNOUNCEMENT_CATEGORY_COLORS = {
+  'Events': '#F59E0B',          // amber
+  'System Updates': '#1E5BFF',  // brand blue
+  'Achievements': '#10B981',    // emerald
+  'Reminders': '#EF4444',       // coral
+}
+const OTHER_CATEGORY_COLOR = '#64748B' // slate
+const announcementColor = (category) =>
+  ANNOUNCEMENT_CATEGORY_COLORS[category] || OTHER_CATEGORY_COLOR
 
 // Freshest non-stale device from the live list — same "most recently
 // reported wins" selection today's stored-data poll already uses below,
@@ -149,6 +163,11 @@ const BulletinBoard = () => {
   const hasVideos = mediaList.length > 0
   const currentVideo = hasVideos ? mediaList[currentVideoIndex] : null
 
+  // Pinned announcements float to the top under their own heading; the rest
+  // keep the server's newest-first order. No cap — the list scrolls.
+  const pinnedAnnouncements = announcements.filter(a => a.pinned)
+  const regularAnnouncements = announcements.filter(a => !a.pinned)
+
   // Build the ticker text from announcements + a live AQI snippet.
   const tickerSegments = []
   if (aqiData) {
@@ -267,31 +286,60 @@ const BulletinBoard = () => {
 
             <div className="kiosk-combined-divider" />
 
-            {/* News list below */}
+            {/* Announcements list below */}
             <div className="kiosk-combined-block kiosk-combined-news">
               <div className="kiosk-combined-label">
                 <Newspaper size={14} />
-                News &amp; Events
+                Announcements
               </div>
+
+              {/* Colour legend — mirrors the mobile category colours */}
+              <div className="kiosk-news-legend">
+                {Object.entries(ANNOUNCEMENT_CATEGORY_COLORS).map(([name, c]) => (
+                  <span key={name} className="kiosk-legend-item">
+                    <span className="kiosk-legend-dot" style={{ background: c }} />
+                    {name}
+                  </span>
+                ))}
+              </div>
+
               <div className="kiosk-news-list">
                 {announcements.length === 0 ? (
                   <div className="kiosk-empty">No announcements yet</div>
                 ) : (
-                  announcements.slice(0, 4).map((a, i) => (
-                    <div key={a._id || i} className="kiosk-news-row">
-                      <div className="kiosk-news-date">
-                        <CalendarDays size={14} />
-                        <span>{a.date || formatDate()}</span>
-                      </div>
-                      <div className="kiosk-news-body">
-                        <div className="kiosk-news-title">{a.title}</div>
-                        {a.description && (
-                          <div className="kiosk-news-desc">{a.description}</div>
+                  <>
+                    {pinnedAnnouncements.length > 0 && (
+                      <>
+                        <div className="kiosk-news-group-label">
+                          <Pin size={12} />
+                          Important Announcements
+                        </div>
+                        {pinnedAnnouncements.map((a, i) => (
+                          <AnnouncementRow
+                            key={a._id || `pinned-${i}`}
+                            a={a}
+                            pinned
+                            dateFallback={formatDate()}
+                          />
+                        ))}
+                      </>
+                    )}
+
+                    {regularAnnouncements.length > 0 && (
+                      <>
+                        {pinnedAnnouncements.length > 0 && (
+                          <div className="kiosk-news-group-label">Other Announcements</div>
                         )}
-                        {a.time && <div className="kiosk-news-time">{a.time}</div>}
-                      </div>
-                    </div>
-                  ))
+                        {regularAnnouncements.map((a, i) => (
+                          <AnnouncementRow
+                            key={a._id || `reg-${i}`}
+                            a={a}
+                            dateFallback={formatDate()}
+                          />
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -304,6 +352,43 @@ const BulletinBoard = () => {
         <div className="kiosk-ticker-track" key={tickerText}>
           <span className="kiosk-ticker-text">{tickerText.repeat(3)}</span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ===== One announcement row =====
+// Category colour drives a left accent bar and a matching pill, the same
+// coding the mobile bulletin uses. A pinned row also carries a pin glyph.
+const AnnouncementRow = ({ a, pinned = false, dateFallback }) => {
+  const color = announcementColor(a.category)
+  return (
+    <div className="kiosk-news-row" style={{ borderLeft: `4px solid ${color}` }}>
+      <div className="kiosk-news-date">
+        <CalendarDays size={14} />
+        <span>{a.date || dateFallback}</span>
+      </div>
+      <div className="kiosk-news-body">
+        <div className="kiosk-news-tags">
+          {a.category && (
+            <span
+              className="kiosk-news-cat"
+              style={{ color, borderColor: color, background: `${color}1a` }}
+            >
+              {a.category}
+            </span>
+          )}
+          {pinned && (
+            <span className="kiosk-news-pin">
+              <Pin size={11} /> Pinned
+            </span>
+          )}
+        </div>
+        <div className="kiosk-news-title">{a.title}</div>
+        {a.description && (
+          <div className="kiosk-news-desc">{a.description}</div>
+        )}
+        {a.time && <div className="kiosk-news-time">{a.time}</div>}
       </div>
     </div>
   )
