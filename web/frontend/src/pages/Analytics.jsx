@@ -463,8 +463,7 @@ const Analytics = () => {
           const unit = m.unit ? ` ${m.unit}` : ''
           const cat = isAqi ? categories.find((c) => val >= c.min && val <= c.max) : null
           const catLine = cat ? `<br/><span style="color:${CATEGORY_COLORS[cat.name]};font-weight:600">${cat.name}</span>` : ''
-          const instantLine = slot?.instant ? '<br/><span style="opacity:.7">instant reading — NowCast unavailable yet</span>' : ''
-          return `${t}<br/><b>${val}</b>${unit}${catLine}${instantLine}`
+          return `${t}<br/><b>${val}</b>${unit}${catLine}`
         },
       },
       // 'inside' alone keeps scroll-to-zoom and drag-to-pan on the chart
