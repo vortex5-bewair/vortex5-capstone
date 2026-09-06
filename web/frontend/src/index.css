@@ -1228,6 +1228,34 @@ input, select {
   font-weight: 500;
 }
 
+/* "Pin this announcement" — checkbox sits inline with its label, not stacked
+   above it like the text fields. */
+.label-row label.checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.label-row label.checkbox-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Existing Announcements table — pin marker before a pinned row's title. */
+.announcement-title-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.announcement-title-cell .pinned-icon {
+  color: var(--color-link, #2196f3);
+  flex-shrink: 0;
+}
+
 /* Input styling comes from .search-input (token-based, dark-mode safe). */
 
 /* Button spacing */
