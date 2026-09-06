@@ -825,13 +825,7 @@ const Analytics = () => {
               how much of it is real before any number means anything. */}
           <Card sx={{ mb: 2.5 }}>
             <CardContent>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                {from.format('D MMM')} – {(liveMode ? dayjs() : to).format('D MMM YYYY')}
-                {' · '}{schoolHours ? (data?.meta?.schoolHours?.label || 'school hours') : 'all hours'}
-                {' · '}{deviceLabel}
-              </Typography>
-
-              <Grid container spacing={1.5} alignItems="center" sx={{ mt: 0.5, mb: hasData ? 2 : 0 }}>
+              <Grid container spacing={1.5} alignItems="center" sx={{ mb: hasData ? 2 : 0 }}>
                 <Grid item xs={12} md={2.2}>
                   <DateTimePicker label="From" value={from} onChange={(v) => { setFrom(v); setLiveMode(false) }} slotProps={{ textField: { fullWidth: true, size: 'small' } }} />
                 </Grid>
