@@ -315,6 +315,12 @@ const BulletinBoard = () => {
 // in its own smaller, separately labelled line, since it will disagree with
 // the live figure by design (a single 15s window vs. a 12-hour one) and an
 // unlabelled disagreement reads as a bug.
+//
+// When there is no usable live frame — the common case for a staff kiosk
+// scoped to a single device that has gone quiet, or whose last frame is
+// already stale — the reported 12-hour figure is promoted to the primary
+// readout instead of hiding air quality behind "Waiting for a live
+// reading...". The live panel still wins whenever live data is present.
 const AqiPreview = ({ live, reported }) => {
   const category = live ? aqiCategory(live.smoothed) : null
   const color = category ? CATEGORY_COLORS[category] : '#94a3b8'
@@ -356,11 +362,22 @@ const AqiPreview = ({ live, reported }) => {
             </div>
           </div>
         </>
+      ) : reported ? (
+        <>
+          <div className="kiosk-aqi-live-status">Latest reported</div>
+          <div className="kiosk-aqi-number" style={{ color: reportedColor }}>{reported.Aqi}</div>
+          <div className="kiosk-aqi-cat" style={{ color: reportedColor }}>
+            {reportedCategory || 'No data'}
+          </div>
+          <div className="kiosk-aqi-reported" title="NowCast, DENR AO 2020-14">
+            Average AQI for the last 12 hours · live reading unavailable
+          </div>
+        </>
       ) : (
         <div className="kiosk-empty">Waiting for a live reading...</div>
       )}
 
-      {reported && (
+      {live && reported && (
         <div className="kiosk-aqi-reported" title="NowCast, DENR AO 2020-14">
           Average AQI for 12 hours — {' '}
           <strong style={{ color: reportedColor }}>{reported.Aqi}</strong>
