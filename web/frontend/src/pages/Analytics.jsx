@@ -1187,6 +1187,7 @@ const FilterToggle = ({ checked, onChange, disabled, label }) => (
         '& .MuiSwitch-thumb': {
           width: 18, height: 18,
           boxShadow: '0 1px 3px rgba(0,0,0,.3)',
+          backgroundColor: '#fff',
         },
         '& .MuiSwitch-track': {
           borderRadius: 999,
