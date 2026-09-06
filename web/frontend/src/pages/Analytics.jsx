@@ -475,7 +475,17 @@ const Analytics = () => {
         {
           type: 'time', gridIndex: 0, min: fromMs, max: toMs,
           axisLine: { lineStyle: { color: ec.axis } },
-          axisLabel: { color: ec.label, hideOverlap: true },
+          axisLabel: {
+            color: ec.label,
+            hideOverlap: true,
+            // 12-hour with AM/PM instead of ECharts' default 24-hour ticks.
+            // ECharts' own time-axis format tokens have no 12-hour/meridiem
+            // token, hence a plain formatter function here.
+            formatter: (value) => {
+              const d = dayjs(value)
+              return d.minute() === 0 ? d.format('h A') : d.format('h:mm A')
+            },
+          },
         },
       ],
       yAxis: [
