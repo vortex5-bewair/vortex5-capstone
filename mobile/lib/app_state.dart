@@ -15,8 +15,17 @@ class AppState extends ChangeNotifier {
 
   static const _settingsKey = 'app_alert_settings';
 
-  // Reading per deviceId — populated from /api/aqi/latest.
+  // Reading per deviceId — populated from /api/aqi/latest. This is the
+  // 12-hour reported figure; alerting keys off it exclusively (see
+  // _rebuildAlerts), same principle as the web dashboard: alerts never fire
+  // off a single live sample.
   final Map<String, SensorReadings> _readingsBySensorId = {};
+
+  // Per-frame live reading per deviceId — populated from /api/aqi/live on
+  // its own ~2s timer, independent of the 10s stored-data refresh above.
+  // Only devices currently reporting a fresh (non-stale) frame get an entry,
+  // matching _readingsBySensorId's "absent means no data" convention.
+  final Map<String, LiveReading> _liveBySensorId = {};
 
   // Sensors fetched from /api/device.
   List<SensorDevice> _sensors = [];
@@ -28,8 +37,11 @@ class AppState extends ChangeNotifier {
 
   String? _refreshError;
   String _activeSensorId = '';
-  int _aqi = 0;
-  String _aqiLabel = '--';
+  // Tracks the STORED (12-hour reported) reading only — used to decide when
+  // to push an "Air quality updated" notification. Deliberately not exposed;
+  // the public aqi/aqiLabel getters below read the live reading instead.
+  int _reportedAqi = 0;
+  String _reportedAqiLabel = '--';
   DateTime _lastUpdated = DateTime.now();
   bool _hasShownPopup = false;
   bool _notificationsEnabled = true;
@@ -47,11 +59,15 @@ class AppState extends ChangeNotifier {
   AirQualityBands? _bands;
 
   Timer? _refreshTimer;
+  Timer? _liveTimer;
 
   String get activeSensorId => _activeSensorId;
-  int get aqi => _aqi;
-  String get aqiLabel => _aqiLabel;
-  DateTime get lastUpdated => _lastUpdated;
+  // Live (per-frame) figures for the active sensor — these are what the UI
+  // shows, updating on the ~2s live timer. '0'/'--' before the first live
+  // frame arrives, same convention _fmt already uses below.
+  int get aqi => _activeLive?.aqiInstant ?? 0;
+  String get aqiLabel => _activeLive?.aqiLabel ?? '--';
+  DateTime get lastUpdated => _activeLive?.receivedAt ?? _lastUpdated;
   List<AlertItem> get alerts => List.unmodifiable(_alerts);
   List<AlertItem> get alertHistory => List.unmodifiable(_alertHistory);
   List<SensorDevice> get sensors => List.unmodifiable(_sensors);
@@ -93,10 +109,14 @@ class AppState extends ChangeNotifier {
   String get activeSensorName => activeSensor.name;
   String get activeSensorRoom => activeSensor.room;
 
-  SensorReadings? get _activeReading => _readingsBySensorId[_activeSensorId];
+  LiveReading? get _activeLive => _liveBySensorId[_activeSensorId];
 
   /// Public lookup so widgets can show per-device data without changing the active sensor.
   SensorReadings? readingFor(String sensorId) => _readingsBySensorId[sensorId];
+
+  /// Public lookup for the live (per-frame) reading, same "absent means no
+  /// data" convention as [readingFor].
+  LiveReading? liveReadingFor(String sensorId) => _liveBySensorId[sensorId];
 
   /// Unique room names from the user's sensors, alphabetically sorted.
   List<String> get rooms {
@@ -108,14 +128,14 @@ class AppState extends ChangeNotifier {
     return list;
   }
 
-  String get co2          => _fmt(_activeReading?.co2,           1, ' ppm', 0);
-  String get pm1          => _fmt(_activeReading?.pm1,           1, ' µg/m³', 1);
-  String get pm25         => _fmt(_activeReading?.pm25,          1, ' µg/m³', 1);
-  String get pm10         => _fmt(_activeReading?.pm10,          1, ' µg/m³', 1);
-  String get tvoc         => _fmt(_activeReading?.tvoc,          1, ' µg/m³', 0);
-  String get formaldehyde => _fmt(_activeReading?.formaldehyde,  1, ' µg/m³', 0);
-  String get temp         => _fmt(_activeReading?.temperature,   1, ' °C',   1);
-  String get humidity     => _fmt(_activeReading?.humidity,      1, '%',     1);
+  String get co2          => _fmt(_activeLive?.co2,           1, ' ppm', 0);
+  String get pm1          => _fmt(_activeLive?.pm1,           1, ' µg/m³', 1);
+  String get pm25         => _fmt(_activeLive?.pm25,          1, ' µg/m³', 1);
+  String get pm10         => _fmt(_activeLive?.pm10,          1, ' µg/m³', 1);
+  String get tvoc         => _fmt(_activeLive?.tvoc,          1, ' µg/m³', 0);
+  String get formaldehyde => _fmt(_activeLive?.formaldehyde,  1, ' µg/m³', 0);
+  String get temp         => _fmt(_activeLive?.temperature,   1, ' °C',   1);
+  String get humidity     => _fmt(_activeLive?.humidity,      1, '%',     1);
 
   static String _fmt(double? v, int _, String suffix, int decimals) =>
       v == null ? '--' : '${v.toStringAsFixed(decimals)}$suffix';
@@ -168,6 +188,49 @@ class AppState extends ChangeNotifier {
   void stopAutoRefresh() {
     _refreshTimer?.cancel();
     _refreshTimer = null;
+  }
+
+  // Per-frame live reading, polled independently and much faster than the
+  // 10s stored-data refresh above — GET /api/aqi/live is the same in-memory,
+  // never-touches-the-database endpoint the web dashboard's fallback uses.
+  // A plain poll (not SSE) is deliberate here: simpler on Flutter, and 2s is
+  // already well under the sensor's own ~1s publish rate.
+  void startLiveRefresh({Duration interval = const Duration(seconds: 2)}) {
+    _liveTimer?.cancel();
+    _liveTimer = Timer.periodic(interval, (_) => _refreshLive());
+  }
+
+  void stopLiveRefresh() {
+    _liveTimer?.cancel();
+    _liveTimer = null;
+  }
+
+  Future<void> _refreshLive() async {
+    if (UserSession.current == null) return;
+    try {
+      final uri = Uri.parse('${UserSession.baseUrl}/api/aqi/live');
+      final res = await http
+          .get(uri, headers: _authHeaders)
+          .timeout(const Duration(seconds: 5));
+      if (res.statusCode != 200) return;
+
+      final json = jsonDecode(res.body) as List<dynamic>;
+      _liveBySensorId.clear();
+      for (final raw in json) {
+        final r = raw as Map<String, dynamic>;
+        final id = r['deviceId']?.toString();
+        if (id == null || id.isEmpty) continue;
+        final live = LiveReading.fromJson(r);
+        // Absent means no data, same convention _readingsBySensorId uses —
+        // a stale frame (device gone quiet) shouldn't keep showing as live.
+        if (live.available && !live.stale) _liveBySensorId[id] = live;
+      }
+      notifyListeners();
+    } catch (_) {
+      // Silent on purpose: this polls every 2s, far more often than the main
+      // refresh, and a transient miss shouldn't flash an error banner. The
+      // UI already falls back to "No data" once entries age out above.
+    }
   }
 
   Map<String, String> get _authHeaders {
@@ -448,26 +511,27 @@ class AppState extends ChangeNotifier {
   void _syncCurrentReading({bool pushAlert = true}) {
     final reading = _readingsBySensorId[_activeSensorId];
     if (reading == null) {
-      _aqi = 0;
-      _aqiLabel = '--';
+      _reportedAqi = 0;
+      _reportedAqiLabel = '--';
       return;
     }
 
-    final previousLabel = _aqiLabel;
-    _aqi = reading.aqi;
-    _aqiLabel = reading.aqiLabel;
+    final previousLabel = _reportedAqiLabel;
+    _reportedAqi = reading.aqi;
+    _reportedAqiLabel = reading.aqiLabel;
     _lastUpdated = reading.updatedAt;
 
     if (pushAlert &&
         _notificationsEnabled &&
-        previousLabel != _aqiLabel &&
+        previousLabel != _reportedAqiLabel &&
         previousLabel != '--' &&
         previousLabel.isNotEmpty) {
       _alerts.insert(
         0,
         AlertItem(
           title: 'Air quality updated',
-          message: '${activeSensor.room} is now $_aqiLabel with AQI $_aqi.',
+          message:
+              '${activeSensor.room} is now $_reportedAqiLabel with AQI $_reportedAqi.',
           type: AlertType.aqi,
           createdAt: DateTime.now(),
         ),
@@ -559,6 +623,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _liveTimer?.cancel();
     super.dispose();
   }
 }
@@ -620,6 +685,63 @@ class SensorReadings {
       temperature:  (json['Temperature']  as num?)?.toDouble() ?? 0,
       humidity:     (json['Humidity']     as num?)?.toDouble() ?? 0,
       updatedAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
+    );
+  }
+}
+
+/// A single per-frame reading from GET /api/aqi/live — the sensor's raw,
+/// unaveraged frame, not the 12-hour reported figure [SensorReadings] holds.
+/// [aqiInstant] is that one frame's AQI, jitter and all — that's the point.
+class LiveReading {
+  final bool available;
+  final bool stale;
+  final int aqiInstant;
+  final String aqiLabel;
+  final double pm1;
+  final double pm25;
+  final double pm10;
+  final double tvoc;
+  final double co2;
+  final double formaldehyde;
+  final double temperature;
+  final double humidity;
+  final DateTime receivedAt;
+
+  const LiveReading({
+    required this.available,
+    required this.stale,
+    required this.aqiInstant,
+    required this.aqiLabel,
+    required this.pm1,
+    required this.pm25,
+    required this.pm10,
+    required this.tvoc,
+    required this.co2,
+    required this.formaldehyde,
+    required this.temperature,
+    required this.humidity,
+    required this.receivedAt,
+  });
+
+  factory LiveReading.fromJson(Map<String, dynamic> json) {
+    final available = json['available'] == true;
+    final metrics = json['metrics'] as Map<String, dynamic>? ?? const {};
+    final aqiVal = (json['aqiInstant'] as num?)?.toInt() ?? 0;
+    return LiveReading(
+      available: available,
+      stale: json['stale'] == true,
+      aqiInstant: aqiVal,
+      aqiLabel: available ? _aqiLabelFromValue(aqiVal) : '--',
+      pm1:          (metrics['PM1']          as num?)?.toDouble() ?? 0,
+      pm25:         (metrics['PM25']         as num?)?.toDouble() ?? 0,
+      pm10:         (metrics['PM10']         as num?)?.toDouble() ?? 0,
+      tvoc:         (metrics['TVOC']         as num?)?.toDouble() ?? 0,
+      co2:          (metrics['CO2']          as num?)?.toDouble() ?? 0,
+      formaldehyde: (metrics['Formaldehyde'] as num?)?.toDouble() ?? 0,
+      temperature:  (metrics['Temperature']  as num?)?.toDouble() ?? 0,
+      humidity:     (metrics['Humidity']     as num?)?.toDouble() ?? 0,
+      receivedAt: DateTime.tryParse(json['receivedAt']?.toString() ?? '') ??
           DateTime.now(),
     );
   }

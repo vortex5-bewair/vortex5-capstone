@@ -159,9 +159,9 @@ class _HomePageState extends State<HomePage> {
     // Tint the background by the currently shown sensor's air quality.
     final cur = _current;
     final curReading =
-        (cur != null && cur.enabled) ? widget.appState.readingFor(cur.id) : null;
+        (cur != null && cur.enabled) ? widget.appState.liveReadingFor(cur.id) : null;
     final tint = curReading != null
-        ? aqiColorFor(curReading.aqi)
+        ? aqiColorFor(curReading.aqiInstant)
         : const Color(0xFF94A3B8);
 
     return Scaffold(
@@ -392,12 +392,12 @@ class _HomePageState extends State<HomePage> {
             },
             itemBuilder: (ctx, i) {
               final sensor = sensors[i];
-              final rawReading = widget.appState.readingFor(sensor.id);
+              final rawReading = widget.appState.liveReadingFor(sensor.id);
               final resetAt = _resetAtByDevice[sensor.id];
               // A reading from before the last "Forget Wi-Fi" isn't
               // trustworthy — treat it as if it doesn't exist.
               final effectiveReading =
-                  (resetAt != null && rawReading != null && !rawReading.updatedAt.isAfter(resetAt))
+                  (resetAt != null && rawReading != null && !rawReading.receivedAt.isAfter(resetAt))
                       ? null
                       : rawReading;
               return RefreshIndicator(
@@ -475,7 +475,7 @@ class _HomePageState extends State<HomePage> {
 /// sensor + reading so neighbouring PageView pages don't show the active one.
 class _SensorPanel extends StatelessWidget {
   final SensorDevice sensor;
-  final SensorReadings? reading;
+  final LiveReading? reading;
   final double threshold;
 
   const _SensorPanel({
@@ -493,7 +493,7 @@ class _SensorPanel extends StatelessWidget {
     // as if they were still live.
     final hasReading =
         reading != null && !isOff && sensor.status != SensorStatus.offline;
-    final aqi = reading?.aqi ?? 0;
+    final aqi = reading?.aqiInstant ?? 0;
     final color = !hasReading ? const Color(0xFF94A3B8) : aqiColorFor(aqi);
 
     final components = <_Component>[
@@ -615,7 +615,7 @@ class _SensorPanel extends StatelessWidget {
                   size: 12, color: Color(0xFF94A3B8)),
               const SizedBox(width: 4),
               Text(
-                'Updated ${_timeAgo(reading!.updatedAt)}',
+                'Updated ${_timeAgo(reading!.receivedAt)}',
                 style: const TextStyle(
                   color: Color(0xFF94A3B8),
                   fontSize: 11,

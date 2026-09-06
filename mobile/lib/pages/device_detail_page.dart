@@ -117,7 +117,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   @override
   Widget build(BuildContext context) {
     final sensor = _sensor;
-    final reading = widget.appState.readingFor(sensor.id);
+    final reading = widget.appState.liveReadingFor(sensor.id);
     final hasReading = reading != null;
 
     final statusColor = !hasReading

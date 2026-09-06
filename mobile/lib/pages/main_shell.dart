@@ -29,12 +29,14 @@ class _MainShellState extends State<MainShell> {
     await _appState.initialize();
     if (!mounted) return;
     _appState.startAutoRefresh();
+    _appState.startLiveRefresh();
     setState(() => _ready = true);
   }
 
   @override
   void dispose() {
     _appState.stopAutoRefresh();
+    _appState.stopLiveRefresh();
     super.dispose();
   }
 
