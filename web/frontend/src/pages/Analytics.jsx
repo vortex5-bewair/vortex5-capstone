@@ -3,7 +3,6 @@ import {
   Box, Card, CardContent, Typography, Grid, FormControl, InputLabel, Select,
   MenuItem, Switch, CircularProgress, Alert, Button, Chip,
   Table, TableBody, TableCell, TableHead, TableRow, CssBaseline,
-  ToggleButtonGroup, ToggleButton,
 } from '@mui/material'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -100,28 +99,6 @@ const METRIC_TO_FIELD = {
   aqi: 'Aqi', pm25: 'PM25', pm10: 'PM10', co2: 'CO2', tvoc: 'TVOC', hcho: 'Formaldehyde',
 }
 
-// Per-bucket "driver" for the trend table: whichever field is furthest over
-// its own limit, mirroring the worstField/driver concept RoomRow already
-// uses at the device level — computed client-side, no new backend data.
-const BUCKET_DRIVER_FIELDS = [
-  { key: 'pm25', field: 'PM25', label: 'PM 2.5' },
-  { key: 'pm10', field: 'PM10', label: 'PM 10' },
-  { key: 'co2', field: 'CO2', label: 'CO₂' },
-  { key: 'tvoc', field: 'TVOC', label: 'TVOC' },
-  { key: 'hcho', field: 'Formaldehyde', label: 'HCHO' },
-]
-const bucketDriver = (bucket, limits) => {
-  let best = null
-  for (const f of BUCKET_DRIVER_FIELDS) {
-    const val = bucket[f.key]
-    const limit = limits[f.field]
-    if (val == null || !limit) continue
-    const ratio = val / limit
-    if (!best || ratio > best.ratio) best = { ratio, label: f.label }
-  }
-  return best && best.ratio > 1 ? best.label : '—'
-}
-
 // Format an hour (0-23) as "6 AM" / "12 PM".
 const hourLabel = (h) => {
   const period = h < 12 ? 'AM' : 'PM'
@@ -207,7 +184,6 @@ const Analytics = () => {
   const [room, setRoom] = useState('all')
   const [deviceId, setDeviceId] = useState('all')
   const [metric, setMetric] = useState('aqi')
-  const [trendView, setTrendView] = useState('chart')
   const [granularity, setGranularity] = useState('auto')
   const [schoolHours, setSchoolHours] = useState(() => loadStoredSchoolHours() ?? false)
 
@@ -1003,26 +979,10 @@ const Analytics = () => {
                         <MenuItem value="week" sx={{ fontSize: 13 }}>Weekly</MenuItem>
                         <MenuItem value="month" sx={{ fontSize: 13 }}>Monthly</MenuItem>
                       </Select>
-                      <ToggleButtonGroup size="small" exclusive value={trendView} onChange={(e, v) => { if (v) setTrendView(v) }}>
-                        <ToggleButton value="chart" sx={{ textTransform: 'none', px: 1.5 }}>Chart</ToggleButton>
-                        <ToggleButton value="table" sx={{ textTransform: 'none', px: 1.5 }}>Table</ToggleButton>
-                      </ToggleButtonGroup>
                     </Box>
                   </Box>
-                  {trendView === 'chart' ? (
-                    <>
-                      {trendOption && <ReactECharts option={trendOption} style={{ height: 380, marginTop: 8 }} notMerge />}
-                      {metric === 'aqi' && <CategoryLegend categories={categories} />}
-                    </>
-                  ) : trendSlots && (
-                    <TrendTable
-                      slots={trendSlots.slots}
-                      categories={categories}
-                      limits={limits}
-                      isAqi={metric === 'aqi'}
-                      unit={(METRIC_OPTIONS.find((o) => o.value === metric) || METRIC_OPTIONS[0]).unit}
-                    />
-                  )}
+                  {trendOption && <ReactECharts option={trendOption} style={{ height: 380, marginTop: 8 }} notMerge />}
+                  {metric === 'aqi' && <CategoryLegend categories={categories} />}
                 </CardContent>
               </Card>
 
@@ -1281,47 +1241,6 @@ const CategoryLegend = ({ categories }) => (
       </div>
     ))}
   </div>
-)
-
-// Table-view twin for the trend chart, so no value is colour-only. Same
-// conventions as PollutantStatsTable below: plain MUI Table, bold headers,
-// right-aligned tabular-nums numbers, em dash for nulls.
-const TrendTable = ({ slots, categories, limits, isAqi, unit }) => (
-  <Box sx={{ maxHeight: 420, overflow: 'auto', mt: 1 }}>
-    <Table size="small" stickyHeader>
-      <TableHead>
-        <TableRow>
-          <TableCell sx={{ fontWeight: 700 }}>Time</TableCell>
-          <TableCell align="right" sx={{ fontWeight: 700 }}>Value</TableCell>
-          {isAqi && <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>}
-          {isAqi && <TableCell sx={{ fontWeight: 700 }}>Driver</TableCell>}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {slots.map((s) => {
-          const cat = isAqi && s.value != null ? categories.find((c) => s.value >= c.min && s.value <= c.max) : null
-          return (
-            <TableRow key={s.time} hover>
-              <TableCell>{dayjs(s.time).format('MMM D, h:mm A')}</TableCell>
-              <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {s.value == null ? '—' : `${s.value}${unit ? ` ${unit}` : ''}`}
-              </TableCell>
-              {isAqi && (
-                <TableCell>
-                  {s.value == null ? (
-                    <Chip size="small" variant="outlined" label={s.state === 'excluded' ? 'Excluded' : 'No reading'} />
-                  ) : cat ? (
-                    <Chip size="small" label={cat.name} sx={{ bgcolor: CATEGORY_COLORS[cat.name], color: '#fff', fontWeight: 600 }} />
-                  ) : '—'}
-                </TableCell>
-              )}
-              {isAqi && <TableCell>{s.bucket ? bucketDriver(s.bucket, limits) : '—'}</TableCell>}
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
-  </Box>
 )
 
 const PollutantStatsTable = ({ stats, limits }) => (
