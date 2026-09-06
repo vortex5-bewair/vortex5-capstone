@@ -249,12 +249,6 @@ const Analytics = () => {
     return map
   }, [data])
 
-  // The single worst interval, for the caption under the trend chart.
-  const worstBucket = useMemo(() => {
-    if (!data?.buckets?.length) return null
-    return data.buckets.reduce((a, b) => (b.aqi > a.aqi ? b : a))
-  }, [data])
-
   const aqiExceedance = useMemo(
     () => (data?.exceedances || []).find((e) => e.field === 'Aqi'),
     [data]
@@ -1004,16 +998,6 @@ const Analytics = () => {
                       <Typography variant="h6" sx={{ fontWeight: 700 }}>
                         {(METRIC_OPTIONS.find((o) => o.value === metric) || METRIC_OPTIONS[0]).label} over time
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Interval averages{schoolHours ? ', school hours only' : ''}.
-                        {metric === 'aqi' ? ' The line is coloured by DENR category; the dashed line is the alert limit.' : ' The dashed line is the alert limit.'}
-                        {metric === 'aqi' ? ' AQI is NowCast-based (DENR AO 2020-14) — a weighted average leaning on the most recent hours, not a flat mean.' : ''}
-                      </Typography>
-                      {worstBucket && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                          Worst interval: {dayjs(worstBucket.time).format('ddd D MMM, h A')} — average AQI {worstBucket.aqi}, peak {worstBucket.aqiMax}.
-                        </Typography>
-                      )}
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       {/* Only this chart cares about bucket size, so the control
