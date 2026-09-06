@@ -46,6 +46,21 @@ function loadStoredRange() {
   }
 }
 
+const SCHOOL_HOURS_STORAGE_KEY = 'bewair_analytics_school_hours'
+
+// Same "don't quietly revert on refresh" reasoning as the range above.
+// Returns null (fall through to the off-by-default state) on anything
+// missing or corrupted.
+function loadStoredSchoolHours() {
+  try {
+    const raw = localStorage.getItem(SCHOOL_HOURS_STORAGE_KEY)
+    if (raw !== 'true' && raw !== 'false') return null
+    return raw === 'true'
+  } catch {
+    return null
+  }
+}
+
 // Pollutant metadata: label + unit for tables and charts.
 const POLLUTANTS = [
   { key: 'Aqi', label: 'AQI', unit: '' },
@@ -194,7 +209,15 @@ const Analytics = () => {
   const [metric, setMetric] = useState('aqi')
   const [trendView, setTrendView] = useState('chart')
   const [granularity, setGranularity] = useState('auto')
-  const [schoolHours, setSchoolHours] = useState(true)
+  const [schoolHours, setSchoolHours] = useState(() => loadStoredSchoolHours() ?? false)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SCHOOL_HOURS_STORAGE_KEY, String(schoolHours))
+    } catch {
+      // Private browsing / storage disabled — same fallback as the range above.
+    }
+  }, [schoolHours])
 
   const [devices, setDevices] = useState([])
   const [data, setData] = useState(null)
