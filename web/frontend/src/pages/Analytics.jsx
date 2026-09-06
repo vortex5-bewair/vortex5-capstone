@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Box, Card, CardContent, Typography, Grid, FormControl, InputLabel, Select,
   MenuItem, Switch, CircularProgress, Alert, Button, Chip,
-  Table, TableBody, TableCell, TableHead, TableRow, CssBaseline, Tooltip,
+  Table, TableBody, TableCell, TableHead, TableRow, CssBaseline,
   ToggleButtonGroup, ToggleButton,
 } from '@mui/material'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
@@ -864,16 +864,20 @@ const Analytics = () => {
                     onChange={(e) => setSchoolHours(e.target.checked)}
                     label="School hours only"
                   />
-                  <Tooltip title={liveAllowed ? '' : 'Live refresh is available on ranges of 24 hours or less'}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                      <FilterToggle
-                        checked={liveMode}
-                        disabled={!liveAllowed}
-                        onChange={(e) => { setLiveMode(e.target.checked); if (e.target.checked) setTo(dayjs()) }}
-                        label={liveMode ? `Live · ${lastUpdated ? dayjs(lastUpdated).format('HH:mm:ss') : ''}` : 'Live off'}
-                      />
-                    </span>
-                  </Tooltip>
+                  {/* Always clickable — a quick "show me right now" action that
+                      snaps the range to the last 24 hours rather than needing
+                      one already selected. */}
+                  <FilterToggle
+                    checked={liveMode}
+                    onChange={(e) => {
+                      setLiveMode(e.target.checked)
+                      if (e.target.checked) {
+                        setTo(dayjs())
+                        setFrom(dayjs().subtract(24, 'hour'))
+                      }
+                    }}
+                    label={liveMode ? `Live · ${lastUpdated ? dayjs(lastUpdated).format('HH:mm:ss') : ''}` : 'Live off'}
+                  />
                 </Grid>
               </Grid>
 
