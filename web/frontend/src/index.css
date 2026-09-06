@@ -3860,6 +3860,11 @@ input, select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* The tile is a column flex with align-items: stretch, so without this the
+     icon box spans the full width and the glyph centres itself — leaving the
+     icon adrift in the top-middle while the label and value sit left. Hug the
+     content so it lines up with everything below it. */
+  align-self: flex-start;
 }
 
 .dash-kpi-label {
