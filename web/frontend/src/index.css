@@ -5434,11 +5434,52 @@ input, select {
   font-size: 13px;
 }
 
+/* No row cap — every announcement is shown; the list scrolls to fit
+   whatever vertical space the sidebar gives it. */
 .kiosk-news-list {
   flex: 1;
   overflow-y: auto;
-  max-height: 280px;
+  min-height: 0;
   margin: 0 -6px;
+}
+
+/* ---- Category colour legend ---- */
+.kiosk-news-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.kiosk-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.kiosk-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ---- "Important Announcements" / "All Announcements" group headings ---- */
+.kiosk-news-group-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-tertiary);
+  padding: 10px 12px 4px;
 }
 
 .kiosk-news-row {
@@ -5461,9 +5502,36 @@ input, select {
   gap: 4px;
   width: 56px;
   padding: 6px 4px;
-  background: #fef3c7;
+  background: var(--color-surface-sunken, #f1f5f9);
   border-radius: 8px;
-  color: #92400e;
+  color: var(--color-text-secondary);
+}
+
+/* Category pill + pin marker sit above the title */
+.kiosk-news-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.kiosk-news-cat {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid;
+  line-height: 1.5;
+}
+
+.kiosk-news-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #1e5bff;
 }
 
 .kiosk-news-date span {
