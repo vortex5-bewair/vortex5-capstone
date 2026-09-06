@@ -198,6 +198,7 @@ const Analytics = () => {
     }
   }, [from, to])
 
+  const [room, setRoom] = useState('all')
   const [deviceId, setDeviceId] = useState('all')
   const [metric, setMetric] = useState('aqi')
   const [trendView, setTrendView] = useState('chart')
@@ -259,11 +260,32 @@ const Analytics = () => {
     [data]
   )
 
-  const deviceLabel = deviceId === 'all'
-    ? 'all rooms'
-    : (devices.find((d) => d.deviceId === deviceId)?.room
-      || devices.find((d) => d.deviceId === deviceId)?.name
+  // Distinct room names for the Room filter — a room can hold more than one
+  // device, so this is no longer "one dropdown entry per device".
+  const roomNames = useMemo(() => {
+    const set = new Set(devices.map((d) => d.room).filter(Boolean))
+    return [...set].sort()
+  }, [devices])
+
+  // Device filter's options narrow to whatever room is selected, so picking
+  // a room first and then a device can't offer a device outside it.
+  const devicesInRoom = useMemo(
+    () => (room === 'all' ? devices : devices.filter((d) => d.room === room)),
+    [devices, room]
+  )
+
+  const handleRoomChange = (value) => {
+    setRoom(value)
+    setDeviceId('all') // a device from the old room may not belong to the new one
+  }
+
+  const deviceLabel = deviceId !== 'all'
+    ? (devices.find((d) => d.deviceId === deviceId)?.name
+      || devices.find((d) => d.deviceId === deviceId)?.room
       || deviceId)
+    : room !== 'all'
+      ? room
+      : 'all rooms'
 
   // ---- data ----------------------------------------------------------------
 
@@ -289,6 +311,7 @@ const Analytics = () => {
         to: effectiveTo.toISOString(),
         schoolHours: String(schoolHours),
       })
+      if (room !== 'all') params.append('room', room)
       if (deviceId !== 'all') params.append('deviceId', deviceId)
       if (granularity !== 'auto') params.append('granularity', granularity)
 
@@ -314,7 +337,7 @@ const Analytics = () => {
     const intervalMs = rangeHours <= 6 ? 30000 : 60000
     const id = setInterval(() => fetchAnalytics(false), intervalMs)
     return () => clearInterval(id)
-  }, [user, isAdmin, from, to, deviceId, granularity, schoolHours, liveMode, liveAllowed, rangeHours])
+  }, [user, isAdmin, from, to, room, deviceId, granularity, schoolHours, liveMode, liveAllowed, rangeHours])
 
   // ---- charts --------------------------------------------------------------
 
@@ -833,16 +856,25 @@ const Analytics = () => {
                 <Grid item xs={12} md={2.2}>
                   <DateTimePicker label="To" value={to} onChange={(v) => { setTo(v); setLiveMode(false) }} disabled={liveMode} slotProps={{ textField: { fullWidth: true, size: 'small' } }} />
                 </Grid>
-                <Grid item xs={6} md={1.7}>
+                <Grid item xs={6} md={1.45}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Room</InputLabel>
-                    <Select label="Room" value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
+                    <Select label="Room" value={room} onChange={(e) => handleRoomChange(e.target.value)}>
                       <MenuItem value="all">All rooms</MenuItem>
-                      {devices.map((d) => <MenuItem key={d.deviceId} value={d.deviceId}>{d.room || d.name}</MenuItem>)}
+                      {roomNames.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={6} md={1.7}>
+                <Grid item xs={6} md={1.45}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Device</InputLabel>
+                    <Select label="Device" value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
+                      <MenuItem value="all">All devices</MenuItem>
+                      {devicesInRoom.map((d) => <MenuItem key={d.deviceId} value={d.deviceId}>{d.name || d.deviceId}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6} md={1.45}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Detail</InputLabel>
                     <Select label="Detail" value={granularity} onChange={(e) => setGranularity(e.target.value)}>
@@ -854,7 +886,7 @@ const Analytics = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={6} md={1.7}>
+                <Grid item xs={6} md={1.45}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Metric</InputLabel>
                     <Select label="Metric" value={metric} onChange={(e) => setMetric(e.target.value)}>
@@ -862,7 +894,7 @@ const Analytics = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={2.5} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Grid item xs={12} md={2} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   <FormControlLabel
                     sx={{ m: 0 }}
                     control={<Switch size="small" checked={schoolHours} onChange={(e) => setSchoolHours(e.target.checked)} />}
@@ -898,7 +930,7 @@ const Analytics = () => {
                         label="Data coverage"
                         value={`${data.coverage.pct}%`}
                         accent={data.coverage.low ? CATEGORY_COLORS['Very Unhealthy'] : undefined}
-                        hint={`${fmtHours(data.coverage.observedMinutes / 60)} of ${fmtHours(data.coverage.expectedMinutes / 60)} hrs observed`}
+                        hint={`${fmtHours(data.coverage.observedMinutes / 60)} of ${fmtHours(data.coverage.expectedMinutes / 60)} hrs observed from ${data.meta.deviceCount} device${data.meta.deviceCount === 1 ? '' : 's'}`}
                         sub={data.coverage.low ? 'Some readings missing — results may not represent the full period.' : 'Readings cover the period.'}
                         fraction={(data.coverage.pct ?? 0) / 100}
                       />

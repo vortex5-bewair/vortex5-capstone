@@ -235,9 +235,23 @@ const getAnalytics = async (req, res) => {
     const userDeviceIds = await getVisibleDeviceIds(req.user)
     if (userDeviceIds.length === 0) return res.status(200).json(empty)
 
-    if (req.query.deviceId && !userDeviceIds.includes(req.query.deviceId)) {
-      return res.status(200).json(empty)
+    // Device scope: `room` narrows to every device sharing that room (a room
+    // can hold more than one device), `deviceId` narrows further to exactly
+    // one — same "room, then device" relationship the Room/Device filters
+    // present. Either can be used alone.
+    let scopedDeviceIds = userDeviceIds
+    if (req.query.room) {
+      const roomDevices = await Device.find(
+        { deviceId: { $in: userDeviceIds }, room: req.query.room },
+        'deviceId'
+      ).lean()
+      scopedDeviceIds = roomDevices.map((d) => d.deviceId)
     }
+    if (req.query.deviceId) {
+      if (!scopedDeviceIds.includes(req.query.deviceId)) return res.status(200).json(empty)
+      scopedDeviceIds = [req.query.deviceId]
+    }
+    if (scopedDeviceIds.length === 0) return res.status(200).json(empty)
 
     // Default range is 7 days, not 24 hours: with the school-hours filter on, a
     // single day holds at most ten usable hours and on a weekend holds none.
@@ -245,12 +259,10 @@ const getAnalytics = async (req, res) => {
     const to   = req.query.to   ? new Date(req.query.to)   : new Date()
     const rangeMs = to - from
 
-    const deviceFilter = req.query.deviceId
-      ? { deviceId: req.query.deviceId }
-      : { deviceId: { $in: userDeviceIds } }
+    const deviceFilter = { deviceId: { $in: scopedDeviceIds } }
     const match = { ...deviceFilter, createdAt: { $gte: from, $lte: to } }
 
-    const deviceCount = req.query.deviceId ? 1 : userDeviceIds.length
+    const deviceCount = scopedDeviceIds.length
 
     // Composed ONCE and spread into every pipeline below.
     const sh = schoolHoursStages(schoolActive, TZ)
@@ -523,8 +535,7 @@ const getAnalytics = async (req, res) => {
       categoryByDevice[id][row._id.category] = row.count
     }
 
-    const scope = req.query.deviceId ? [req.query.deviceId] : userDeviceIds
-    const byDevice = scope.map((id) => {
+    const byDevice = scopedDeviceIds.map((id) => {
       const agg = statsByDevice[id]
       const hours = roomHours[id] || { byField: {}, drivers: {} }
       const fields = Object.entries(hours.byField).sort((a, b) => b[1] - a[1])
