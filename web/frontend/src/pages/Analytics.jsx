@@ -858,14 +858,14 @@ const Analytics = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md="auto" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Grid item xs={12} md="auto" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                   <FilterToggle
                     checked={schoolHours}
                     onChange={(e) => setSchoolHours(e.target.checked)}
                     label="School hours only"
                   />
                   <Tooltip title={liveAllowed ? '' : 'Live refresh is available on ranges of 24 hours or less'}>
-                    <span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                       <FilterToggle
                         checked={liveMode}
                         disabled={!liveAllowed}
