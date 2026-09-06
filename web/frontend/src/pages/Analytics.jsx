@@ -856,7 +856,7 @@ const Analytics = () => {
                 <Grid item xs={12} md={2.2}>
                   <DateTimePicker label="To" value={to} onChange={(v) => { setTo(v); setLiveMode(false) }} disabled={liveMode} slotProps={{ textField: { fullWidth: true, size: 'small' } }} />
                 </Grid>
-                <Grid item xs={6} md={1.45}>
+                <Grid item xs={6} md={1.75}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Room</InputLabel>
                     <Select label="Room" value={room} onChange={(e) => handleRoomChange(e.target.value)}>
@@ -865,7 +865,7 @@ const Analytics = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={6} md={1.45}>
+                <Grid item xs={6} md={1.75}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Device</InputLabel>
                     <Select label="Device" value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
@@ -874,19 +874,7 @@ const Analytics = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={6} md={1.45}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Detail</InputLabel>
-                    <Select label="Detail" value={granularity} onChange={(e) => setGranularity(e.target.value)}>
-                      <MenuItem value="auto">Auto</MenuItem>
-                      <MenuItem value="hour">Hourly</MenuItem>
-                      <MenuItem value="day">Daily</MenuItem>
-                      <MenuItem value="week">Weekly</MenuItem>
-                      <MenuItem value="month">Monthly</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={6} md={1.45}>
+                <Grid item xs={6} md={1.8}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Metric</InputLabel>
                     <Select label="Metric" value={metric} onChange={(e) => setMetric(e.target.value)}>
@@ -894,7 +882,7 @@ const Analytics = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={2} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Grid item xs={12} md={2.5} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   <FormControlLabel
                     sx={{ m: 0 }}
                     control={<Switch size="small" checked={schoolHours} onChange={(e) => setSchoolHours(e.target.checked)} />}
@@ -1027,10 +1015,28 @@ const Analytics = () => {
                         </Typography>
                       )}
                     </Box>
-                    <ToggleButtonGroup size="small" exclusive value={trendView} onChange={(e, v) => { if (v) setTrendView(v) }}>
-                      <ToggleButton value="chart" sx={{ textTransform: 'none', px: 1.5 }}>Chart</ToggleButton>
-                      <ToggleButton value="table" sx={{ textTransform: 'none', px: 1.5 }}>Table</ToggleButton>
-                    </ToggleButtonGroup>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {/* Only this chart cares about bucket size, so the control
+                          lives here rather than in the page-wide filter bar. */}
+                      <Select
+                        size="small"
+                        variant="standard"
+                        disableUnderline
+                        value={granularity}
+                        onChange={(e) => setGranularity(e.target.value)}
+                        sx={{ fontSize: 13, color: 'text.secondary', '& .MuiSelect-select': { py: 0.25, pr: '20px !important' } }}
+                      >
+                        <MenuItem value="auto" sx={{ fontSize: 13 }}>Auto</MenuItem>
+                        <MenuItem value="hour" sx={{ fontSize: 13 }}>Hourly</MenuItem>
+                        <MenuItem value="day" sx={{ fontSize: 13 }}>Daily</MenuItem>
+                        <MenuItem value="week" sx={{ fontSize: 13 }}>Weekly</MenuItem>
+                        <MenuItem value="month" sx={{ fontSize: 13 }}>Monthly</MenuItem>
+                      </Select>
+                      <ToggleButtonGroup size="small" exclusive value={trendView} onChange={(e, v) => { if (v) setTrendView(v) }}>
+                        <ToggleButton value="chart" sx={{ textTransform: 'none', px: 1.5 }}>Chart</ToggleButton>
+                        <ToggleButton value="table" sx={{ textTransform: 'none', px: 1.5 }}>Table</ToggleButton>
+                      </ToggleButtonGroup>
+                    </Box>
                   </Box>
                   {trendView === 'chart' ? (
                     <>
