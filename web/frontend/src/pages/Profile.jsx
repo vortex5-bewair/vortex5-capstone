@@ -2,7 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useCachedFetch, invalidateCache } from '../hooks/useCachedFetch'
 import Avatar from '../components/Avatar'
-import { User, Mail, Shield, Calendar, Lock, Edit2, Check, X, Camera, Eye, EyeOff } from 'lucide-react'
+import { User, Mail, Shield, Calendar, Lock, Edit2, Check, X, Camera, Eye, EyeOff, Building2, Briefcase } from 'lucide-react'
+
+// Same lists as the mobile app's Edit Profile form and the web Signup form —
+// kept identical so Department/Staff Type stay consistent data regardless of
+// which app someone edits their profile from.
+const DEPARTMENTS = [
+  'Science Department',
+  'Mathematics Department',
+  'English Department',
+  'Social Studies Department',
+  'ICT Department',
+]
+
+const STAFF_TYPES = ['Teacher', 'Student Teacher']
 
 const Profile = () => {
   const { user } = useAuthContext()
@@ -21,7 +34,7 @@ const Profile = () => {
 
   // Profile edit state
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '' })
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', department: '', staffType: '' })
   const [saving, setSaving] = useState(false)
 
   // Password change state
@@ -49,6 +62,8 @@ const Profile = () => {
         firstName: profile.firstName || '',
         lastName: profile.lastName || '',
         email: profile.email || '',
+        department: profile.department || '',
+        staffType: profile.staffType || '',
       })
       setPictureUrl(profile.pictureUrl || '')
     }
@@ -82,7 +97,14 @@ const Profile = () => {
 
       // Update the auth context's stored user too (name shows in header/navbar)
       const stored = JSON.parse(localStorage.getItem('user') || '{}')
-      const updated = { ...stored, firstName: data.firstName, lastName: data.lastName, email: data.email }
+      const updated = {
+        ...stored,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        department: data.department,
+        staffType: data.staffType,
+      }
       localStorage.setItem('user', JSON.stringify(updated))
 
       setTimeout(() => setSuccessMessage(''), 3000)
@@ -275,6 +297,36 @@ const Profile = () => {
                 className="profile-input"
               />
             </ProfileField>
+            <ProfileField icon={<Briefcase size={16} />} label="Staff type">
+              <select
+                value={form.staffType}
+                onChange={e => setForm({ ...form, staffType: e.target.value })}
+                className="profile-input"
+              >
+                <option value="">Select staff type</option>
+                {STAFF_TYPES.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+                {form.staffType && !STAFF_TYPES.includes(form.staffType) && (
+                  <option value={form.staffType}>{form.staffType}</option>
+                )}
+              </select>
+            </ProfileField>
+            <ProfileField icon={<Building2 size={16} />} label="Department">
+              <select
+                value={form.department}
+                onChange={e => setForm({ ...form, department: e.target.value })}
+                className="profile-input"
+              >
+                <option value="">Select department</option>
+                {DEPARTMENTS.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+                {form.department && !DEPARTMENTS.includes(form.department) && (
+                  <option value={form.department}>{form.department}</option>
+                )}
+              </select>
+            </ProfileField>
 
             {error && <div className="profile-error">{error}</div>}
 
@@ -289,6 +341,8 @@ const Profile = () => {
                     firstName: profile.firstName,
                     lastName: profile.lastName,
                     email: profile.email,
+                    department: profile.department || '',
+                    staffType: profile.staffType || '',
                   })
                 }}
               >
@@ -310,6 +364,8 @@ const Profile = () => {
             <ProfileRow icon={<User size={16} />}    label="First name" value={profile.firstName} />
             <ProfileRow icon={<User size={16} />}    label="Last name"  value={profile.lastName} />
             <ProfileRow icon={<Mail size={16} />}    label="Email"      value={profile.email} />
+            <ProfileRow icon={<Briefcase size={16} />} label="Staff type" value={profile.staffType} />
+            <ProfileRow icon={<Building2 size={16} />}  label="Department"  value={profile.department} />
             <ProfileRow icon={<Shield size={16} />}  label="Role"       value={profile.role} />
             <ProfileRow icon={<Calendar size={16} />} label="Joined"    value={joinedDate} />
           </div>
