@@ -232,6 +232,12 @@ const handleUpdate = async () => {
   }
 }
 
+// Pinned announcements float to the top of the table; order within each
+// group stays as the server sent it (newest first). Array.sort is stable.
+const sortedAnnouncements = [...announcements].sort(
+  (a, b) => (b.pinned === true) - (a.pinned === true)
+)
+
     return(
 <div className="configuration">
 <div className="section-header">
@@ -434,7 +440,7 @@ const handleUpdate = async () => {
     </thead>
 
     <tbody>
-      {announcements.map(a => (
+      {sortedAnnouncements.map(a => (
         <tr key={a._id}>
           <td>
             <span className="announcement-title-cell">
