@@ -310,10 +310,10 @@ const BulletinBoard = () => {
 }
 
 // ===== AQI Preview (right sidebar bottom) =====
-// Live (smoothed) figure is primary — the number a hallway screen shows has
-// to stay calm, not bounce with raw jitter. The reported NowCast sits beneath
-// in its own smaller, separately labelled line, since it will disagree with
-// the live figure by design (a single 15s window vs. a 12-hour one) and an
+// Live (instant) figure is primary — the raw per-frame reading, same as
+// DeviceDetail's diagnostic view. The reported NowCast sits beneath in its
+// own smaller, separately labelled line, since it will disagree with the
+// live figure by design (a single frame vs. a 12-hour average) and an
 // unlabelled disagreement reads as a bug.
 //
 // When there is no usable live frame — the common case for a staff kiosk
@@ -322,9 +322,9 @@ const BulletinBoard = () => {
 // readout instead of hiding air quality behind "Waiting for a live
 // reading...". The live panel still wins whenever live data is present.
 const AqiPreview = ({ live, reported }) => {
-  const category = live ? aqiCategory(live.smoothed) : null
+  const category = live ? aqiCategory(live.aqiInstant) : null
   const color = category ? CATEGORY_COLORS[category] : '#94a3b8'
-  const metrics = live?.smoothedMetrics
+  const metrics = live?.metrics
   const ageS = live ? Math.round((live.ageMs ?? 0) / 1000) : null
 
   const reportedCategory = reported ? aqiCategory(reported.Aqi) : null
@@ -335,7 +335,7 @@ const AqiPreview = ({ live, reported }) => {
       {live ? (
         <>
           <div className="kiosk-aqi-live-status">Live · {ageS}s ago</div>
-          <div className="kiosk-aqi-number" style={{ color }}>{live.smoothed}</div>
+          <div className="kiosk-aqi-number" style={{ color }}>{live.aqiInstant}</div>
           <div className="kiosk-aqi-cat" style={{ color }}>{category || 'No data'}</div>
           <div className="kiosk-aqi-metrics">
             <div className="kiosk-aqi-metric">
@@ -368,9 +368,6 @@ const AqiPreview = ({ live, reported }) => {
           <div className="kiosk-aqi-number" style={{ color: reportedColor }}>{reported.Aqi}</div>
           <div className="kiosk-aqi-cat" style={{ color: reportedColor }}>
             {reportedCategory || 'No data'}
-          </div>
-          <div className="kiosk-aqi-reported" title="NowCast, DENR AO 2020-14">
-            Average AQI for the last 12 hours · live reading unavailable
           </div>
         </>
       ) : (
