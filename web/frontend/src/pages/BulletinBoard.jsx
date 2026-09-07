@@ -45,6 +45,7 @@ const BulletinBoard = () => {
   const [aqiData, setAqiData] = useState(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const newsListRef = useRef(null)
 
   // Live (smoothed) reading, pushed over the stream — mounted once here at
   // the page level. The kiosk's calm figure comes from reading `smoothed`
@@ -80,6 +81,70 @@ const BulletinBoard = () => {
     const interval = setInterval(fetchAnnouncements, 60000)
     return () => clearInterval(interval)
   }, [])
+
+  // ---------- Auto-scroll the announcements list ----------
+  // A slow, continuous upward crawl through the list, distinct from the
+  // horizontal bottom ticker. Pauses to let a reader settle at the top and
+  // bottom, and pauses entirely on hover so a passer-by can stop it to read.
+  useEffect(() => {
+    const el = newsListRef.current
+    if (!el) return
+
+    const SPEED_PX_PER_SEC = 18
+    const DWELL_MS = 1800
+
+    let rafId
+    let hovering = false
+    let phase = 'scrolling' // 'scrolling' | 'pausedAtBottom' | 'pausedAtTop'
+    let phaseStart = performance.now()
+    let lastTs = phaseStart
+    // scrollTop only stores whole pixels, so a sub-pixel-per-frame speed
+    // (a few tenths of a px at 60fps) would round back to the same integer
+    // every frame and never move. Track the true position separately and
+    // only round when writing it to the DOM.
+    let pos = el.scrollTop
+
+    const onEnter = () => { hovering = true }
+    const onLeave = () => { hovering = false }
+    el.addEventListener('mouseenter', onEnter)
+    el.addEventListener('mouseleave', onLeave)
+
+    const step = (ts) => {
+      const dt = ts - lastTs
+      lastTs = ts
+      const maxScroll = el.scrollHeight - el.clientHeight
+
+      if (maxScroll > 1 && !hovering) {
+        if (phase === 'scrolling') {
+          pos += (SPEED_PX_PER_SEC * dt) / 1000
+          if (pos >= maxScroll) {
+            pos = maxScroll
+            el.scrollTop = pos
+            phase = 'pausedAtBottom'
+            phaseStart = ts
+          } else {
+            el.scrollTop = pos
+          }
+        } else if (phase === 'pausedAtBottom' && ts - phaseStart >= DWELL_MS) {
+          pos = 0
+          el.scrollTop = pos
+          phase = 'pausedAtTop'
+          phaseStart = ts
+        } else if (phase === 'pausedAtTop' && ts - phaseStart >= DWELL_MS) {
+          phase = 'scrolling'
+        }
+      }
+
+      rafId = requestAnimationFrame(step)
+    }
+    rafId = requestAnimationFrame(step)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      el.removeEventListener('mouseenter', onEnter)
+      el.removeEventListener('mouseleave', onLeave)
+    }
+  }, [announcements])
 
   // ---------- Fetch latest AQI ----------
   useEffect(() => {
@@ -124,6 +189,37 @@ const BulletinBoard = () => {
       document.exitFullscreen?.()
     }
   }
+
+  // ---------- Autoplay watchdog ----------
+  // Relying on the <video autoPlay> attribute alone is unreliable: on a cold
+  // first load (uncached Cloudinary fetch, browser tab not yet "warm"), the
+  // browser can finish loading the video's data without ever running the
+  // autoplay steps, leaving it silently paused forever with no retry. That's
+  // exactly the "first video doesn't play" bug — later videos advance via
+  // onEnded/remount after the connection and codecs are already warmed up, so
+  // they're far less likely to hit the same race. Retry play() explicitly
+  // whenever the element becomes ready, and once more on an interval as a
+  // last-resort self-heal since this kiosk runs unattended for hours.
+  const currentVideoId = mediaList[currentVideoIndex]?._id
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !isPlaying) return
+
+    const tryPlay = () => { video.play().catch(() => {}) }
+    tryPlay()
+    video.addEventListener('loadeddata', tryPlay)
+    video.addEventListener('canplay', tryPlay)
+
+    const watchdog = setInterval(() => {
+      if (video.paused && video.readyState >= 2) tryPlay()
+    }, 3000)
+
+    return () => {
+      video.removeEventListener('loadeddata', tryPlay)
+      video.removeEventListener('canplay', tryPlay)
+      clearInterval(watchdog)
+    }
+  }, [currentVideoId, isPlaying])
 
   // ---------- Video controls ----------
   const handleVideoEnded = () => {
@@ -303,7 +399,7 @@ const BulletinBoard = () => {
                 ))}
               </div>
 
-              <div className="kiosk-news-list">
+              <div className="kiosk-news-list" ref={newsListRef}>
                 {announcements.length === 0 ? (
                   <div className="kiosk-empty">No announcements yet</div>
                 ) : (
