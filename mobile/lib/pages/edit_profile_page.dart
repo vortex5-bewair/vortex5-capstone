@@ -103,7 +103,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
           TextField(
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
-            decoration: _fieldDeco(),
+            readOnly: true,
+            decoration: _fieldDeco().copyWith(
+              fillColor: const Color(0xFFEEF2F5),
+            ),
+            style: const TextStyle(color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 16),
           _label('Department'),

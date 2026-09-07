@@ -429,9 +429,14 @@ const getMyProfile = async (req, res) => {
     }
 }
 
-// PATCH /api/user/me — update current user's firstName, lastName, email
+// PATCH /api/user/me — update current user's firstName, lastName, department,
+// staffType. Email is deliberately not editable here — it's the account's
+// login identifier, and self-service email changes are a common account-
+// takeover vector (change email, then use it to reset the password). Any
+// `email` sent to this endpoint is silently ignored; the response always
+// reflects the account's real, unchanged address.
 const updateMyProfile = async (req, res) => {
-    const { firstName, lastName, email, department, staffType } = req.body
+    const { firstName, lastName, department, staffType } = req.body
 
     if (firstName !== undefined && !firstName.trim()) {
         return res.status(400).json({ error: 'First name cannot be empty' })
@@ -439,23 +444,11 @@ const updateMyProfile = async (req, res) => {
     if (lastName !== undefined && !lastName.trim()) {
         return res.status(400).json({ error: 'Last name cannot be empty' })
     }
-    if (email !== undefined && !validator.isEmail(email)) {
-        return res.status(400).json({ error: 'Invalid email' })
-    }
 
     try {
-        // If changing email, check it's not already taken by another user
-        if (email !== undefined) {
-            const existing = await User.findOne({ email })
-            if (existing && existing._id.toString() !== req.user._id.toString()) {
-                return res.status(400).json({ error: 'Email already in use' })
-            }
-        }
-
         const updates = {}
         if (firstName  !== undefined) updates.firstName  = firstName.trim()
         if (lastName   !== undefined) updates.lastName   = lastName.trim()
-        if (email      !== undefined) updates.email      = email.trim()
         if (department !== undefined) updates.department = department.trim()
         if (staffType  !== undefined) updates.staffType  = staffType.trim()
 

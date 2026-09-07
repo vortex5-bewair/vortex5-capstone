@@ -293,8 +293,9 @@ const Profile = () => {
               <input
                 type="email"
                 value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-                className="profile-input"
+                readOnly
+                title="Email can't be changed"
+                className="profile-input profile-input-locked"
               />
             </ProfileField>
             <ProfileField icon={<Briefcase size={16} />} label="Staff type">

@@ -4905,6 +4905,17 @@ input, select {
   box-shadow: 0 0 0 3px var(--brand-blue-soft);
 }
 
+.profile-input-locked {
+  background: var(--color-surface-sunken, var(--color-bg));
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.profile-input-locked:focus {
+  border-color: var(--color-border-strong);
+  box-shadow: none;
+}
+
 /* Shared circular avatar (components/Avatar.jsx) — picture with initials fallback */
 .avatar {
   display: inline-flex;
