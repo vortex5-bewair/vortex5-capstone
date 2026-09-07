@@ -21,7 +21,7 @@ const Profile = () => {
   const { user } = useAuthContext()
 
   // Cached fetch — shows previous profile instantly on revisit, refreshes in bg.
-  const { data: profile, loading, error: fetchError } =
+  const { data: profile, loading, error: fetchError, refetch: refetchProfile } =
     useCachedFetch(user ? '/api/user/me' : null, user?.token)
 
   const [error, setError] = useState('')
@@ -89,9 +89,13 @@ const Profile = () => {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to update profile')
-      // Profile is read-only state from the cached fetch — invalidate so next
-      // load (or background refetch) pulls the new server-side data.
+      // Profile is read-only state from the cached fetch. Invalidating alone
+      // only meant the NEXT visit would see fresh data — the read-only view
+      // right below this form kept showing the pre-save values until a full
+      // page reload. Refetching now pulls the new data into this same
+      // mounted hook, so the view updates immediately.
       invalidateCache('/api/user/me')
+      await refetchProfile()
       setEditing(false)
       setSuccessMessage('Profile updated successfully')
 
