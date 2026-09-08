@@ -217,11 +217,12 @@ const DeviceManagement = () => {
           <input
             type="text"
             placeholder="Search devices..."
+            aria-label="Search devices"
             value={search}
             onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
             className="search-input"
           />
-          <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="sort-select">
+          <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="sort-select" aria-label="Sort devices">
             <option value="alphabetical">A–Z</option>
             <option value="room">Room</option>
             <option value="status">Status</option>
@@ -325,6 +326,7 @@ const DeviceManagement = () => {
                 <input
                   type="text"
                   placeholder="Device ID (from the ESP32's provisioning)"
+                  aria-label="Device ID"
                   value={addForm.deviceId}
                   onChange={e => setAddForm({ ...addForm, deviceId: e.target.value })}
                   className="search-input"
@@ -332,6 +334,7 @@ const DeviceManagement = () => {
                 <input
                   type="text"
                   placeholder="Name (e.g. Room 301 Sensor)"
+                  aria-label="Device name"
                   value={addForm.name}
                   onChange={e => setAddForm({ ...addForm, name: e.target.value })}
                   className="search-input"
@@ -339,6 +342,7 @@ const DeviceManagement = () => {
                 <input
                   type="text"
                   placeholder="Room"
+                  aria-label="Room"
                   value={addForm.room}
                   onChange={e => setAddForm({ ...addForm, room: e.target.value })}
                   className="search-input"
@@ -368,6 +372,7 @@ const DeviceManagement = () => {
                 <input
                   type="text"
                   placeholder="Name"
+                  aria-label="Device name"
                   value={editForm.name}
                   onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                   className="search-input"
@@ -375,6 +380,7 @@ const DeviceManagement = () => {
                 <input
                   type="text"
                   placeholder="Room"
+                  aria-label="Room"
                   value={editForm.room}
                   onChange={e => setEditForm({ ...editForm, room: e.target.value })}
                   className="search-input"

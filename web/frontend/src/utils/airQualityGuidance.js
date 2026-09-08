@@ -20,6 +20,134 @@ let BANDS = FALLBACK_BANDS
 /** Category name -> hex. Mutated in place on hydration so imported references stay live. */
 export const CATEGORY_COLORS = {}
 
+// Adjusted variants of the served category colors, for use as TEXT on this
+// dashboard's card backgrounds (white/--color-surface-2 in light mode,
+// --color-surface-2/--color-surface in dark — AdminDashboard, StaffDeviceList,
+// ClassroomRecords and DeviceDetail all render an AQI figure + category label
+// this way). CATEGORY_COLORS itself is the served palette shared with charts,
+// swatches and the mobile app — tuned to read as a color chip, not as body
+// text — and WCAG AA's 4.5:1 pulls each theme's failures in opposite
+// directions: in light mode the light/vivid colors fail (Good 3.30:1, Fair
+// 2.15:1, USG 3.56:1) and need darkening; in dark mode it's the dark, heavily
+// saturated ones that fail against a dark background (Very Unhealthy 3.35:1,
+// Acutely Unhealthy 3.01:1, Emergency 1.62:1) and need lightening instead —
+// while Good/Fair/USG are already fine as-is there (4.55–7.54:1). This table
+// is local to the web dashboard and never written back to
+// airQualityBands.fallback.json, which is generated from the backend's
+// canonical table and shared with the mobile app against its own backgrounds.
+const TEXT_SAFE_CATEGORY_COLORS_LIGHT = {
+  Good: '#12843c',
+  Fair: '#9e6506',
+  'Unhealthy for Sensitive Groups': '#c3490a',
+}
+const TEXT_SAFE_CATEGORY_COLORS_DARK = {
+  'Very Unhealthy': '#e55b5b',
+  'Acutely Unhealthy': '#ae66ef',
+  Emergency: '#db6060',
+}
+export const textSafeCategoryColor = (category, isDark) => {
+  const table = isDark ? TEXT_SAFE_CATEGORY_COLORS_DARK : TEXT_SAFE_CATEGORY_COLORS_LIGHT
+  return table[category] || CATEGORY_COLORS[category]
+}
+
+// componentInsight() below returns a band color per metric (PM2.5, CO2, etc)
+// straight from the served table — there are more of these than the 6 AQI
+// categories, and the set can change without a redeploy (it comes from the
+// backend), so a hand-picked lookup table isn't practical the way it is for
+// textSafeCategoryColor above. This adjusts any given color algorithmically:
+// darkens it in light mode, lightens it in dark mode, in HSL space (keeping
+// the hue so it still reads as "the same color", just legible) until it
+// clears 4.5:1 against a representative surface color for that theme.
+function relativeLuminance(hex) {
+  const toLin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const r = toLin(parseInt(hex.slice(1, 3), 16) / 255)
+  const g = toLin(parseInt(hex.slice(3, 5), 16) / 255)
+  const b = toLin(parseInt(hex.slice(5, 7), 16) / 255)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+function contrastRatio(a, b) {
+  const l1 = relativeLuminance(a)
+  const l2 = relativeLuminance(b)
+  const lighter = Math.max(l1, l2)
+  const darker = Math.min(l1, l2)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+function hexToHsl(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255
+  const g = parseInt(hex.slice(3, 5), 16) / 255
+  const b = parseInt(hex.slice(5, 7), 16) / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  let h = 0
+  let s = 0
+  const l = (max + min) / 2
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0)
+    else if (max === g) h = (b - r) / d + 2
+    else h = (r - g) / d + 4
+    h /= 6
+  }
+  return [h * 360, s * 100, l * 100]
+}
+function hslToHex(h, s, l) {
+  h /= 360; s /= 100; l /= 100
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1
+    if (t > 1) t -= 1
+    if (t < 1 / 6) return p + (q - p) * 6 * t
+    if (t < 1 / 2) return q
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+    return p
+  }
+  let r, g, b
+  if (s === 0) { r = g = b = l }
+  else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+    const p = 2 * l - q
+    r = hue2rgb(p, q, h + 1 / 3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1 / 3)
+  }
+  const toHex = (x) => Math.round(x * 255).toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+// Representative card backgrounds — not exact for every site this is used
+// from, but close enough that a color passing against these passes in
+// practice everywhere it's actually placed (verified per call site).
+const REFERENCE_BG_LIGHT = '#ffffff'
+const REFERENCE_BG_DARK = '#161c24'
+function blendOver(fgHex, alpha, bgHex) {
+  const f = (i) => parseInt(fgHex.slice(i, i + 2), 16)
+  const b = (i) => parseInt(bgHex.slice(i, i + 2), 16)
+  const mix = (i) => Math.round(f(i) * alpha + b(i) * (1 - alpha))
+  const toHex = (x) => x.toString(16).padStart(2, '0')
+  return `#${toHex(mix(1))}${toHex(mix(3))}${toHex(mix(5))}`
+}
+/**
+ * @param {string} hex - the served insight/band color.
+ * @param {boolean} isDark
+ * @param {number} [selfTintAlpha] - pass this when the color is ALSO used to
+ *   derive its own translucent background (e.g. `background: color + '20'`,
+ *   as AqiDetails' badges and the kiosk's announcement-category pills do).
+ *   Solved so the text passes 4.5:1 against that self-composited tint, not
+ *   just against the plain card surface — a fixed-reference check alone
+ *   still let badges as low as 3.81:1 through.
+ */
+export function readableInsightColor(hex, isDark, selfTintAlpha) {
+  if (!hex) return hex
+  const surface = isDark ? REFERENCE_BG_DARK : REFERENCE_BG_LIGHT
+  const effectiveBg = (candidate) =>
+    selfTintAlpha ? blendOver(candidate, selfTintAlpha, surface) : surface
+  if (contrastRatio(hex, effectiveBg(hex)) >= 4.5) return hex
+  const [h, s, l] = hexToHsl(hex)
+  const step = isDark ? 1 : -1
+  for (let newL = l; newL >= 0 && newL <= 100; newL += step) {
+    const candidate = hslToHex(h, s, newL)
+    if (contrastRatio(candidate, effectiveBg(candidate)) >= 4.5) return candidate
+  }
+  return isDark ? '#ffffff' : '#000000'
+}
+
 /** Field key -> served definition. Rebuilt on hydration. */
 let FIELD_MAP = {}
 

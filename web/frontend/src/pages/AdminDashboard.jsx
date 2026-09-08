@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useLiveReadings, findLiveReading } from '../hooks/useLiveReadings'
+import { useTheme } from '../hooks/useTheme'
 import LivenessIndicator from '../components/LivenessIndicator'
 import { Activity, AlertTriangle, Cpu, Users, X } from 'lucide-react'
-import { CATEGORY_COLORS } from '../utils/airQualityGuidance'
+import { textSafeCategoryColor } from '../utils/airQualityGuidance'
 
 // Handles Enter/Space activation for elements that act like buttons but
 // aren't real <button>s (cards, rows) — keeps them reachable by keyboard.
@@ -15,15 +16,23 @@ const activateOnKey = (onActivate) => (e) => {
   }
 }
 
+// Same semantic tokens StaffDeviceList's STATUS_LABELS already uses. This
+// page's own copy had drifted to raw hex — #16a34a/#d97706/#dc2626 on their
+// soft backgrounds only manage 3.00:1 / 2.86:1 / 3.95:1, all below WCAG AA's
+// 4.5:1 minimum for the pill text — and being raw hex, they never picked up
+// the dark-theme overrides these tokens have (index.css `--color-*-strong`),
+// so the pills stayed light-mode-only colored even with the theme switched.
 const STATUS_LABELS = {
-  active:    { label: 'Active',   color: '#16a34a', bg: '#dcfce7' },
-  available: { label: 'No Data',  color: '#d97706', bg: '#fef3c7' },
-  offline:   { label: 'Inactive', color: '#dc2626', bg: '#fee2e2' },
+  active:    { label: 'Active',   color: 'var(--color-success-strong)', bg: 'var(--color-success-soft)' },
+  available: { label: 'No Data',  color: 'var(--color-warning-strong)', bg: 'var(--color-warning-soft)' },
+  offline:   { label: 'Inactive', color: 'var(--color-danger-strong)',  bg: 'var(--color-danger-soft)' },
 }
+
 
 const AdminDashboard = () => {
   const { user } = useAuthContext()
   const navigate = useNavigate()
+  const { isDark } = useTheme()
 
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -119,7 +128,7 @@ const AdminDashboard = () => {
           icon={<AlertTriangle size={20} />}
           label="Active Alerts"
           value={kpis.activeAlerts}
-          accent={kpis.activeAlerts > 0 ? '#dc2626' : '#94a3b8'}
+          accent={kpis.activeAlerts > 0 ? '#dc2626' : 'var(--color-text-tertiary)'}
           onClick={() => setModal('alerts')}
         />
         <KpiTile
@@ -128,7 +137,7 @@ const AdminDashboard = () => {
           value={kpis.avgAqi != null ? kpis.avgAqi : '--'}
           sub={`${kpis.avgCategory || 'No data'} · 12-hr average`}
           subTitle="NowCast, DENR AO 2020-14"
-          accent={kpis.avgCategory ? (CATEGORY_COLORS[kpis.avgCategory] || '#94a3b8') : '#94a3b8'}
+          accent={kpis.avgCategory ? textSafeCategoryColor(kpis.avgCategory, isDark) : 'var(--color-text-tertiary)'}
         />
       </div>
 
@@ -148,8 +157,8 @@ const AdminDashboard = () => {
             {devices.map(d => {
               const status = STATUS_LABELS[d.status] || STATUS_LABELS.offline
               const aqiColor = d.category
-                ? CATEGORY_COLORS[d.category]
-                : '#94a3b8'
+                ? textSafeCategoryColor(d.category, isDark)
+                : 'var(--color-text-tertiary)'
               const live = findLiveReading(liveByDevice, d.deviceId)
               return (
                 <div
@@ -339,7 +348,7 @@ const ModalShell = ({ title, onClose, children }) => (
     <div className="dash-modal" onClick={(e) => e.stopPropagation()}>
       <div className="dash-modal-head">
         <h2>{title}</h2>
-        <button className="dash-modal-close" onClick={onClose}>
+        <button className="dash-modal-close" onClick={onClose} aria-label="Close">
           <X size={20} />
         </button>
       </div>

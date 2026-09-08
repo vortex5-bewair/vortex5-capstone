@@ -53,8 +53,9 @@ const ForgotPassword = () => {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="auth-field">
-              <label className="auth-label">Email</label>
+              <label className="auth-label" htmlFor="forgot-email">Email</label>
               <input
+                id="forgot-email"
                 className="auth-input"
                 type="email"
                 placeholder="teacher@school.edu"

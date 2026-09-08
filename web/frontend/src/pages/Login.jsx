@@ -53,8 +53,9 @@ const Login = () => {
             {infoMessage && <div className="auth-success">{infoMessage}</div>}
 
             <div className="auth-field">
-              <label className="auth-label">Email</label>
+              <label className="auth-label" htmlFor="login-email">Email</label>
               <input
+                id="login-email"
                 className="auth-input"
                 type="email"
                 placeholder="teacher@school.edu"
@@ -64,9 +65,10 @@ const Login = () => {
             </div>
 
             <div className="auth-field">
-              <label className="auth-label">Password</label>
+              <label className="auth-label" htmlFor="login-password">Password</label>
               <div className="auth-pw-wrap">
                 <input
+                  id="login-password"
                   className="auth-input"
                   type={showPw ? 'text' : 'password'}
                   placeholder="Enter your password"
@@ -78,6 +80,7 @@ const Login = () => {
                   className="auth-pw-toggle"
                   onClick={() => setShowPw(v => !v)}
                   tabIndex={-1}
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
                 >
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>

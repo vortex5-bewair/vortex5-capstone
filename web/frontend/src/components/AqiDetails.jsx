@@ -1,4 +1,5 @@
-import { componentInsight, aqiCategory, CATEGORY_COLORS } from '../utils/airQualityGuidance'
+import { componentInsight, aqiCategory, textSafeCategoryColor, readableInsightColor } from '../utils/airQualityGuidance'
+import { useTheme } from '../hooks/useTheme'
 
 const fmt = (v, d = 1) => {
   if (v == null) return '—'
@@ -6,9 +7,16 @@ const fmt = (v, d = 1) => {
 }
 
 const MetricTile = ({ label, value, unit, insightKey }) => {
+  const { isDark } = useTheme()
   const insight = componentInsight(insightKey, value)
-  const color   = insight?.color || '#94a3b8'
-  const level   = insight?.level || null
+  // The raw served color drives the tile's left-border accent — a decorative
+  // boundary, not text, so it stays the vivid original. The badge underneath
+  // renders that same color AS text on a tint of itself, which does need to
+  // pass 4.5:1; readableInsightColor adjusts just that copy.
+  const color     = insight?.color || '#94a3b8'
+  // 0x20 / 0xFF: matches the badge's own `background: textColor + '20'` below.
+  const textColor = insight ? readableInsightColor(color, isDark, 0x20 / 0xff) : color
+  const level     = insight?.level || null
 
   return (
     <div className="aqt-tile" style={{ '--aqt-color': color }}>
@@ -24,7 +32,7 @@ const MetricTile = ({ label, value, unit, insightKey }) => {
           )}
         </span>
         {level && (
-          <span className="aqt-badge" style={{ background: color + '20', color }}>
+          <span className="aqt-badge" style={{ background: textColor + '20', color: textColor }}>
             {level}
           </span>
         )}
@@ -39,9 +47,10 @@ const MetricTile = ({ label, value, unit, insightKey }) => {
 }
 
 const AqiDetails = ({ aqi }) => {
+  const { isDark } = useTheme()
   const aqiVal   = aqi?.Aqi
   const category = aqiCategory(aqiVal)
-  const catColor = CATEGORY_COLORS[category] || '#94a3b8'
+  const catColor = category ? textSafeCategoryColor(category, isDark) : 'var(--color-text-tertiary)'
 
   const metrics = [
     { label: 'PM 1.0',   value: aqi?.PM1,          unit: 'µg/m³', key: 'pm1'      },

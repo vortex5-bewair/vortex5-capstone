@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useCachedFetch } from '../hooks/useCachedFetch'
 import { useLiveReadings, findLiveReading } from '../hooks/useLiveReadings'
+import { useTheme } from '../hooks/useTheme'
 import LivenessIndicator from '../components/LivenessIndicator'
-import { CATEGORY_COLORS, aqiCategory } from '../utils/airQualityGuidance'
+import { aqiCategory, textSafeCategoryColor } from '../utils/airQualityGuidance'
 
 const STATUS_LABELS = {
   active:    { label: 'Active',   color: 'var(--color-success-strong)', bg: 'var(--color-success-soft)' },
@@ -57,6 +58,7 @@ const DeviceCardBody = memo(function DeviceCardBody({ device, aqi, category, aqi
 const StaffDeviceList = () => {
   const { user } = useAuthContext()
   const navigate = useNavigate()
+  const { isDark } = useTheme()
 
   const { data: devices, loading: devLoading } = useCachedFetch(
     user ? '/api/device' : null, user?.token, { pollInterval: 10000 }
@@ -97,11 +99,11 @@ const StaffDeviceList = () => {
       const r = isOnline ? readings[d.deviceId] : null
       const aqi = r?.Aqi
       const category = aqiCategory(aqi)
-      const aqiColor = category ? CATEGORY_COLORS[category] : '#94a3b8'
+      const aqiColor = category ? textSafeCategoryColor(category, isDark) : 'var(--color-text-tertiary)'
       const statusKey = !isOnline ? 'offline' : (r ? 'active' : 'available')
       return { device: d, aqi, category, aqiColor, status: STATUS_LABELS[statusKey] }
     })
-  }, [devices, readings, now])
+  }, [devices, readings, now, isDark])
 
   // Only show the loading screen on the very first visit, when there's no cached data.
   if (devLoading && !devices) return <div className="dash-page dash-page-loading"><p>Loading your devices...</p></div>

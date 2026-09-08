@@ -89,7 +89,7 @@ const ShareDeviceModal = ({ deviceId, deviceName, deviceRoom, token, onClose, on
             <h3 className="share-modal-title"><Users size={18} /> Device Access</h3>
             <p className="share-modal-sub">{deviceName} · {deviceRoom}</p>
           </div>
-          <button className="share-modal-close" onClick={close}>
+          <button className="share-modal-close" onClick={close} aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -142,7 +142,7 @@ const ShareDeviceModal = ({ deviceId, deviceName, deviceRoom, token, onClose, on
         <div className="share-modal-footer">
           <form className="share-form" onSubmit={handleShare}>
             <input type="email" className="search-input share-email-input"
-              placeholder="Staff email address..." value={shareEmail}
+              placeholder="Staff email address..." aria-label="Staff email address" value={shareEmail}
               onChange={e => setShareEmail(e.target.value)} disabled={shareLoading} />
             <button type="submit" className="btn btn-primary share-btn"
               disabled={shareLoading || !shareEmail.trim()}>

@@ -57,8 +57,9 @@ const VerifySignup = () => {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="auth-field">
-              <label className="auth-label">Verification Code</label>
+              <label className="auth-label" htmlFor="verify-code">Verification Code</label>
               <input
+                id="verify-code"
                 className="auth-input"
                 type="text"
                 placeholder="000000"

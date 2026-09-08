@@ -5,7 +5,7 @@ import { useAuthContext } from '../hooks/useAuthContext'
 import { useLiveReadings } from '../hooks/useLiveReadings'
 import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper, ChevronLeft, ChevronRight, Pin } from 'lucide-react'
 import bewAirLogo from '../assets/bewair_logo_black.png'
-import { CATEGORY_COLORS, aqiCategory } from '../utils/airQualityGuidance'
+import { CATEGORY_COLORS, aqiCategory, readableInsightColor } from '../utils/airQualityGuidance'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
 
 // Announcement category → colour, mirrored from the mobile app's
@@ -458,6 +458,12 @@ const BulletinBoard = () => {
 // coding the mobile bulletin uses. A pinned row also carries a pin glyph.
 const AnnouncementRow = ({ a, pinned = false, dateFallback }) => {
   const color = announcementColor(a.category)
+  // The pill's own background is a light tint of `color` itself — a couple
+  // of these (amber Events, coral Reminders) only manage 1.98:1 / 3.29:1 as
+  // text on that self-tint. This is a kiosk-only, light-mode-only page, so
+  // no isDark toggle to thread through; 0x1a/0xff matches the background
+  // tint below.
+  const textColor = readableInsightColor(color, false, 0x1a / 0xff)
   return (
     <div className="kiosk-news-row" style={{ borderLeft: `4px solid ${color}` }}>
       <div className="kiosk-news-date">
@@ -469,7 +475,7 @@ const AnnouncementRow = ({ a, pinned = false, dateFallback }) => {
           {a.category && (
             <span
               className="kiosk-news-cat"
-              style={{ color, borderColor: color, background: `${color}1a` }}
+              style={{ color: textColor, borderColor: color, background: `${textColor}1a` }}
             >
               {a.category}
             </span>

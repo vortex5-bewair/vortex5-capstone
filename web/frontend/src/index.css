@@ -14,9 +14,18 @@
 /* ---------- Design tokens (light theme = default) ---------- */
 :root {
   /* Brand */
-  --brand-blue:        #1e88ff;
+  /* Was #1e88ff — white text on it (every .btn-primary/.add-btn/pagination-
+     active/etc. across the app, all consistently white-on-brand-blue, never
+     any other pairing) only reached 3.49:1, below WCAG AA's 4.5:1 for
+     normal-size button text. #0067db keeps the same hue at 5.30:1. */
+  --brand-blue:        #0067db;
   --brand-blue-hover:  #1976d2;
   --brand-blue-soft:   #e7f1ff;
+  /* A further-darkened variant, for the one place brand-blue is used as
+     TEXT on its own soft tint rather than as a solid background (the
+     sidebar nav's active-link state) — even post-darkening, --brand-blue
+     itself only reaches 3.06:1 there. */
+  --brand-blue-text-on-soft: #0067db;
   --brand-green:       #18a957;
   --brand-green-soft:  #dcfce7;
 
@@ -49,7 +58,12 @@
   /* Text */
   --color-text-primary:   #0f172a;
   --color-text-secondary: #475569;
-  --color-text-tertiary:  #94a3b8;
+  /* Was #94a3b8 (2.56:1 on white, 2.45:1 on --color-surface-2) — below the
+     WCAG AA 4.5:1 minimum for normal text, and this token is used for small
+     labels repeated per row/card, so it was the single highest-count
+     color-contrast failure in the app. #64748b measures 4.76:1 / 4.55:1 on
+     the same two backgrounds. */
+  --color-text-tertiary:  #64748b;
   --color-text-inverse:   #ffffff;
   --color-link:           #2563eb;
 
@@ -108,9 +122,18 @@
 
   --color-text-primary:   #f1f5f9;
   --color-text-secondary: #cbd5e1;
-  --color-text-tertiary:  #64748b;
+  /* Was #64748b — only 3.60:1 against this theme's dark surface, below the
+     4.5:1 minimum. #94a3b8 (the light theme's old, too-light-for-white
+     value) measures 6.68:1 here, so the two themes essentially swap this
+     token between them. */
+  --color-text-tertiary:  #94a3b8;
   --color-text-inverse:   #0f172a;
   --color-link:           #60a5fa;
+  /* Unlike the light theme, this needs to be LIGHTER than --brand-blue, not
+     darker — the effective background here is --brand-blue-soft composited
+     over this theme's dark --color-surface (~#172c45), and #1e88ff itself
+     only reaches 4.06:1 against that. */
+  --brand-blue-text-on-soft: #3293ff;
 
   --brand-blue-soft:      rgba(30, 136, 255, 0.15);
   --brand-green-soft:     rgba(24, 169, 87, 0.15);
@@ -293,11 +316,11 @@ a:hover {
 
 .sidebar-links a.active {
   background: var(--brand-blue-soft);
-  color: var(--brand-blue);
+  color: var(--brand-blue-text-on-soft);
   font-weight: 600;
 }
 .sidebar-links a.active svg {
-  color: var(--brand-blue);
+  color: var(--brand-blue-text-on-soft);
 }
 
 .sidebar-logout {
@@ -420,11 +443,11 @@ a:hover {
 
 .sidebar-group.active-parent .sidebar-parent {
   background: var(--brand-blue-soft);
-  color: var(--brand-blue);
+  color: var(--brand-blue-text-on-soft);
   font-weight: 600;
 }
 .sidebar-group.active-parent .sidebar-parent svg {
-  color: var(--brand-blue);
+  color: var(--brand-blue-text-on-soft);
 }
 
 /* Submenu wrapper (hover dropdown) */
@@ -472,11 +495,11 @@ a:hover {
   color: var(--color-text-primary);
 }
 .sidebar-submenu a.active {
-  color: var(--brand-blue);
+  color: var(--brand-blue-text-on-soft);
   font-weight: 600;
 }
 .sidebar-submenu a.active svg {
-  color: var(--brand-blue);
+  color: var(--brand-blue-text-on-soft);
 }
 .sidebar-group.active-parent .sidebar-submenu-wrapper {
   max-height: 200px;
@@ -1072,12 +1095,12 @@ form.signup, form.login {
 
 .auth-back-link a {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--color-text-tertiary);
   text-decoration: none;
 }
 
 .auth-back-link a:hover {
-  color: #64748b;
+  color: var(--color-text-secondary);
   text-decoration: underline;
 }
 
@@ -1267,7 +1290,7 @@ input, select {
 /* Button spacing */
 .add-btn {
   padding: 10px 18px;
-  background: #2196f3;
+  background: var(--brand-blue);
   color: white;
   border: none;
   border-radius: 8px;
@@ -1578,7 +1601,10 @@ input, select {
   text-transform: none;
   letter-spacing: 0;
   font-style: italic;
-  opacity: 0.75;
+  /* Was opacity: 0.75 — the inherited --color-text-tertiary already passes
+     4.5:1 on its own in both themes; blending it toward the background
+     dropped that to 2.96:1 / 4.33:1. The italic alone still reads as a
+     quieter aside. */
 }
 
 .aqt-badge {
@@ -2330,12 +2356,6 @@ input, select {
 }
 .btn-warning:hover { background: #b45309; }
 
-.btn-secondary {
-  background: var(--color-bg);
-  color: #374151;
-}
-.btn-secondary:hover { background: #e5e7eb; }
-
 /* ================= PAGE TITLE / HEADER ================= */
 .page-title {
   font-size: 22px;
@@ -2385,6 +2405,7 @@ input, select {
   animation: fadeIn 0.2s ease;
 }
 
+.modal-header h2,
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
@@ -2524,7 +2545,8 @@ input, select {
 }
 
 .danger-media-btn {
-  background: #f44336;
+  /* Was #f44336 — white text on it managed 3.68:1, below WCAG AA's 4.5:1. */
+  background: #e51b0d;
   color: white;
   border: none;
   padding: 6px 14px;
@@ -2573,7 +2595,7 @@ input, select {
 }
 
 .add-btn {
-  background: #3b82f6;
+  background: var(--brand-blue);
   color: white;
   border: none;
   padding: 8px 14px;
@@ -2665,18 +2687,22 @@ input, select {
   text-transform: capitalize;
 }
 
+/* Darkened from the original #10b981/#f59e0b/#ef4444 — white text on those
+   only reached 2.54:1 / 2.15:1 / 3.76:1, all under WCAG AA's 4.5:1 for
+   normal text (the badge text is 12px, well under the large-text
+   threshold). Same hue, dark enough for white text to read on top. */
 .status-active {
-  background-color: #10b981;
+  background-color: #0c855d;
   color: white;
 }
 
 .status-pending {
-  background-color: #f59e0b;
+  background-color: #a36907;
   color: white;
 }
 
 .status-deactivated {
-  background-color: #ef4444;
+  background-color: #eb1515;
   color: white;
 }
 
@@ -4107,6 +4133,22 @@ input, select {
   color: var(--color-text-tertiary);
   font-size: 12px;
 }
+/* --color-text-tertiary is tuned against plain white/--color-surface-2 —
+   on the warning/danger amber and red tints .dash-alert sits on, it drops
+   to 4.27:1 / 3.90:1, under WCAG AA's 4.5:1. A scoped override just for
+   text sitting on those two tinted backgrounds. */
+.dash-alert .dash-alert-limit,
+.dash-alert .alerts-time {
+  color: #5b6a7f;
+}
+/* Dark theme's warning/danger tints are a different composite (their soft
+   tokens are semi-transparent over the dark surface, not a fixed light
+   hex), so the light-mode override above only reaches 2.37:1 / 2.80:1 there
+   — needs its own, lighter value. */
+[data-theme="dark"] .dash-alert .dash-alert-limit,
+[data-theme="dark"] .dash-alert .alerts-time {
+  color: #8d9bae;
+}
 
 /* ---- Empty states ---- */
 .dash-empty {
@@ -4661,8 +4703,11 @@ input, select {
 }
 
 .alerts-tab.active {
-  color: #2563eb;
-  border-bottom-color: #2563eb;
+  /* Was a hardcoded #2563eb, so it stayed the light-theme blue in dark mode
+     too — only 3.67:1 there. --color-link is the theme-aware equivalent
+     (identical value in light, #60a5fa/7.45:1 in dark). */
+  color: var(--color-link);
+  border-bottom-color: var(--color-link);
 }
 
 .alerts-tab-badge {

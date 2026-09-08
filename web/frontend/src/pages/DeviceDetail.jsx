@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useLiveReadings, findLiveReading } from '../hooks/useLiveReadings'
-import { aqiCategory, CATEGORY_COLORS } from '../utils/airQualityGuidance'
+import { aqiCategory, textSafeCategoryColor } from '../utils/airQualityGuidance'
+import { useTheme } from '../hooks/useTheme'
 import { ArrowLeft, Users, ChevronDown, ChevronUp, WifiOff, Power, Loader2 } from 'lucide-react'
 import AqiDetails from '../components/AqiDetails'
 import RecommendedActions from '../components/RecommendedActions'
@@ -194,7 +195,10 @@ const DeviceDetail = () => {
             {isStale && (
               <span style={{
                 marginLeft: 12, padding: '3px 10px',
-                background: '#fef3c7', color: '#d97706',
+                // Was a hardcoded #fef3c7/#d97706 — 2.86:1, and never adapted
+                // to dark mode either. These tokens already pass (6.37:1) and
+                // are theme-aware.
+                background: 'var(--color-warning-soft)', color: 'var(--color-warning-strong)',
                 borderRadius: 999, fontSize: 12, fontWeight: 700,
               }}>
                 {lastReadingAt ? `Last reading ${timeAgo(lastReadingAt)}` : 'No data yet'}
@@ -351,7 +355,9 @@ const DeviceDetail = () => {
         <div className="modal-overlay">
           <div className="modal-card">
             <div className="modal-header">
-              <h3>Forget Wi-Fi?</h3>
+              {/* h2, not h3: the page's only other heading is the h1 device
+                  name above, so h3 here would skip a level. */}
+              <h2>Forget Wi-Fi?</h2>
             </div>
             <div className="modal-body">
               <p>Erase the saved Wi-Fi password on <strong>{device.name}</strong>?</p>
@@ -392,10 +398,11 @@ const DeviceDetail = () => {
 // 12-hour NowCast) need to look like two different things, not two numbers
 // competing inside one component.
 const LiveReadingCard = ({ live, sparkline }) => {
+  const { isDark } = useTheme()
   const available = live?.available
   const stale = live?.stale
   const category = available ? aqiCategory(live.aqiInstant) : null
-  const color = category ? CATEGORY_COLORS[category] : '#94a3b8'
+  const color = category ? textSafeCategoryColor(category, isDark) : 'var(--color-text-tertiary)'
   const ageS = available ? Math.round((live.ageMs ?? 0) / 1000) : null
 
   const statusText = !available
