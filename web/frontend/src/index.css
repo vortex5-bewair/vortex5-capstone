@@ -4,7 +4,6 @@
    Reference points: IBM Carbon, Stripe Dashboard, Linear.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&family=Poppins:wght@600;700;800&display=swap');
 
 *,
 *::before,
@@ -603,6 +602,13 @@ a:hover {
   padding: 24px 28px;
   max-width: 1400px;
   margin: 0 auto;
+}
+
+/* Placeholder shown while a lazily-loaded route chunk downloads. It holds the
+   page height open so the shell does not collapse and snap back, which the
+   browser would otherwise record as layout shift. */
+.route-fallback {
+  min-height: 60vh;
 }
 
 /* homepage */

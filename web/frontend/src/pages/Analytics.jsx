@@ -13,7 +13,6 @@ import dayjs from 'dayjs'
 import { DataGrid } from '@mui/x-data-grid'
 
 import { Download, Activity, Radio, AlertTriangle } from 'lucide-react'
-import jsPDF from 'jspdf'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useTheme as useAppTheme } from '../hooks/useTheme'
 import {
@@ -629,10 +628,14 @@ const Analytics = () => {
 
   // ---- compliance report ---------------------------------------------------
 
-  const downloadReport = () => {
+  const downloadReport = async () => {
     if (!data) return
     setPdfLoading(true)
     try {
+      // Loaded on demand. jsPDF pulls in canvas/DOMPurify helpers too — around
+      // 350 KB that only this one button ever needs, so it no longer ships in
+      // the bundle every other page has to download.
+      const { default: jsPDF } = await import('jspdf')
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pageW = pdf.internal.pageSize.getWidth()
       const pageH = pdf.internal.pageSize.getHeight()
