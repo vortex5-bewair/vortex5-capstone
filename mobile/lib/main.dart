@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:vortex5_application_2/pages/splash_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Poppins + Inter ship under assets/google_fonts/ (see pubspec.yaml), so
+  // every GoogleFonts.poppins()/inter() call resolves from the app bundle.
+  // Turning runtime fetching off removes the HTTP GET + on-UI-isolate TTF
+  // parse that otherwise fired the first time each screen used a weight — a
+  // visible CPU spike mid-navigation.
+  GoogleFonts.config.allowRuntimeFetching = false;
+
   runApp(const MyApp());
 }
 
