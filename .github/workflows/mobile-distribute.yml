@@ -29,18 +29,21 @@ jobs:
       # has no real release keystore yet.
       - run: flutter build apk --release
 
-      - name: Authenticate to Firebase
-        run: |
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > firebase-sa.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/firebase-sa.json" >> "$GITHUB_ENV"
-
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+      # Auth via a CI token (firebase login:ci), not GOOGLE_APPLICATION_CREDENTIALS
+      # + a service account key: `appdistribution:distribute` specifically does
+      # not reliably support ADC/service-account auth (confirmed by several
+      # open firebase-tools issues — it authenticates fine for `firebase deploy`
+      # but fails this command with "Failed to authenticate, have you run
+      # firebase login?" even with a valid, correctly-scoped key). --token is
+      # the deprecated-but-actually-working method for this one command.
       - name: Distribute to testers
         run: |
           firebase appdistribution:distribute \
             build/app/outputs/flutter-apk/app-release.apk \
             --app "${{ secrets.FIREBASE_APP_ID }}" \
             --groups "beta-testers" \
-            --release-notes "${{ github.event.inputs.release_notes }}"
+            --release-notes "${{ github.event.inputs.release_notes }}" \
+            --token "${{ secrets.FIREBASE_TOKEN }}"
