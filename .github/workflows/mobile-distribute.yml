@@ -1,0 +1,46 @@
+name: Distribute Mobile Beta
+
+# Manual only — not on push/PR. A new build goes to testers when a human
+# decides it's beta-worthy, not on every commit.
+on:
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: 'What changed in this build'
+        required: false
+        default: ''
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Debug-signed, unchanged — Firebase App Distribution doesn't require
+      # Play App Signing or any particular signing scheme, and this project
+      # has no real release keystore yet.
+      - run: flutter build apk --release
+
+      - name: Authenticate to Firebase
+        run: |
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > firebase-sa.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/firebase-sa.json" >> "$GITHUB_ENV"
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Distribute to testers
+        run: |
+          firebase appdistribution:distribute \
+            build/app/outputs/flutter-apk/app-release.apk \
+            --app "${{ secrets.FIREBASE_APP_ID }}" \
+            --groups "beta-testers" \
+            --release-notes "${{ github.event.inputs.release_notes }}"
