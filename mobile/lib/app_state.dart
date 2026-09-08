@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -21,11 +22,18 @@ class AppState extends ChangeNotifier {
   // off a single live sample.
   final Map<String, SensorReadings> _readingsBySensorId = {};
 
-  // Per-frame live reading per deviceId — populated from /api/aqi/live on
+  // Per-frame live readings per deviceId — populated from /api/aqi/live on
   // its own ~2s timer, independent of the 10s stored-data refresh above.
   // Only devices currently reporting a fresh (non-stale) frame get an entry,
   // matching _readingsBySensorId's "absent means no data" convention.
-  final Map<String, LiveReading> _liveBySensorId = {};
+  //
+  // This lives in its own ValueNotifier rather than going through the
+  // ChangeNotifier broadcast: the 2s cadence would otherwise rebuild every
+  // listening screen (Home, Alert, …) on every tick. Widgets that show live
+  // numbers subscribe with a ValueListenableBuilder, and _refreshLive only
+  // publishes a new map when the rendered values actually changed.
+  final ValueNotifier<Map<String, LiveReading>> liveReadings =
+      ValueNotifier<Map<String, LiveReading>>(const {});
 
   // Sensors fetched from /api/device.
   List<SensorDevice> _sensors = [];
@@ -60,6 +68,26 @@ class AppState extends ChangeNotifier {
 
   Timer? _refreshTimer;
   Timer? _liveTimer;
+
+  // One HTTP client for the whole session, so the 2s and 10s polls reuse the
+  // same keep-alive connection instead of a fresh TCP/TLS handshake each time.
+  final http.Client _client = http.Client();
+
+  // The live (2s) poll only runs while at least one screen that shows a sensor
+  // is on-screen AND the app is foregrounded. Screens call [retainLive] /
+  // [releaseLive]; [MainShell] toggles [setForeground] from the app lifecycle.
+  int _liveRetainCount = 0;
+  bool _foreground = true;
+
+  // Consecutive failed polls — used to back off (skip the next N ticks) instead
+  // of hammering the network every 2s / 10s while the server is unreachable.
+  int _liveMisses = 0;
+  int _liveSkip = 0;
+  int _autoMisses = 0;
+  int _autoSkip = 0;
+
+  static const Duration _liveInterval = Duration(seconds: 2);
+  static const Duration _autoInterval = Duration(seconds: 10);
 
   String get activeSensorId => _activeSensorId;
   // Live (per-frame) figures for the active sensor — these are what the UI
@@ -109,23 +137,27 @@ class AppState extends ChangeNotifier {
   String get activeSensorName => activeSensor.name;
   String get activeSensorRoom => activeSensor.room;
 
-  LiveReading? get _activeLive => _liveBySensorId[_activeSensorId];
+  LiveReading? get _activeLive => liveReadings.value[_activeSensorId];
 
   /// Public lookup so widgets can show per-device data without changing the active sensor.
   SensorReadings? readingFor(String sensorId) => _readingsBySensorId[sensorId];
 
   /// Public lookup for the live (per-frame) reading, same "absent means no
   /// data" convention as [readingFor].
-  LiveReading? liveReadingFor(String sensorId) => _liveBySensorId[sensorId];
+  LiveReading? liveReadingFor(String sensorId) => liveReadings.value[sensorId];
 
   /// Unique room names from the user's sensors, alphabetically sorted.
-  List<String> get rooms {
+  /// Recomputed only when [_sensors] is reassigned (see [_setSensors]), not on
+  /// every read — the Home screen calls this on every rebuild.
+  List<String> _rooms = const [];
+  List<String> get rooms => _rooms;
+
+  void _recomputeRooms() {
     final set = <String>{};
     for (final s in _sensors) {
       if (s.room.trim().isNotEmpty) set.add(s.room.trim());
     }
-    final list = set.toList()..sort();
-    return list;
+    _rooms = set.toList()..sort();
   }
 
   String get co2          => _fmt(_activeLive?.co2,           1, ' ppm', 0);
@@ -163,6 +195,11 @@ class AppState extends ChangeNotifier {
     _applyServerThresholds();
 
     await refreshFromBackend();
+
+    // Foreground by default; MainShell flips this from the app lifecycle and
+    // retains/releases the live poll as sensor screens come and go.
+    _foreground = true;
+    _reconcileTimers();
   }
 
   /// Adopt the served limits for every knob the user has not pinned.
@@ -180,42 +217,98 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void startAutoRefresh({Duration interval = const Duration(seconds: 10)}) {
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(interval, (_) => refreshFromBackend());
+  // ===========================
+  // POLL SCHEDULING
+  // ===========================
+  // The two timers are no longer started directly. [_reconcileTimers] owns
+  // them and is driven by app lifecycle ([setForeground]) and by screens that
+  // need live data ([retainLive] / [releaseLive]).
+
+  /// Called by [MainShell] from the app lifecycle. Pausing everything while
+  /// backgrounded is the whole energy-score fix.
+  void setForeground(bool value) {
+    if (_foreground == value) return;
+    _foreground = value;
+    _reconcileTimers();
+    if (value) {
+      // Catch up immediately on resume rather than waiting out a full interval.
+      _liveSkip = 0;
+      _autoSkip = 0;
+      _refreshLive();
+      refreshFromBackend();
+    }
   }
 
-  void stopAutoRefresh() {
-    _refreshTimer?.cancel();
-    _refreshTimer = null;
+  /// A screen that shows live sensor numbers (Home, Device detail) calls this
+  /// while it is on-screen, and [releaseLive] when it leaves. The 2s poll runs
+  /// only while the count is > 0 and the app is foregrounded.
+  void retainLive() {
+    _liveRetainCount++;
+    _reconcileTimers();
+  }
+
+  void releaseLive() {
+    _liveRetainCount = math.max(0, _liveRetainCount - 1);
+    _reconcileTimers();
+  }
+
+  void _reconcileTimers() {
+    // Live (2s): only when a sensor screen is visible AND foregrounded.
+    final wantLive = _foreground && _liveRetainCount > 0;
+    if (wantLive && _liveTimer == null) {
+      _liveTimer = Timer.periodic(_liveInterval, (_) => _tickLive());
+    } else if (!wantLive && _liveTimer != null) {
+      _liveTimer!.cancel();
+      _liveTimer = null;
+    }
+
+    // Stored-data (10s): whenever foregrounded — it powers alerts on every tab.
+    if (_foreground && _refreshTimer == null) {
+      _refreshTimer = Timer.periodic(_autoInterval, (_) => _tickAuto());
+    } else if (!_foreground && _refreshTimer != null) {
+      _refreshTimer!.cancel();
+      _refreshTimer = null;
+    }
+  }
+
+  void _tickLive() {
+    if (_liveSkip > 0) {
+      _liveSkip--;
+      return;
+    }
+    _refreshLive();
+  }
+
+  void _tickAuto() {
+    if (_autoSkip > 0) {
+      _autoSkip--;
+      return;
+    }
+    refreshFromBackend();
   }
 
   // Per-frame live reading, polled independently and much faster than the
-  // 10s stored-data refresh above — GET /api/aqi/live is the same in-memory,
+  // 10s stored-data refresh — GET /api/aqi/live is the same in-memory,
   // never-touches-the-database endpoint the web dashboard's fallback uses.
-  // A plain poll (not SSE) is deliberate here: simpler on Flutter, and 2s is
-  // already well under the sensor's own ~1s publish rate.
-  void startLiveRefresh({Duration interval = const Duration(seconds: 2)}) {
-    _liveTimer?.cancel();
-    _liveTimer = Timer.periodic(interval, (_) => _refreshLive());
-  }
-
-  void stopLiveRefresh() {
-    _liveTimer?.cancel();
-    _liveTimer = null;
-  }
-
+  // Publishes to [liveReadings] only when the rendered values changed, so an
+  // unchanged frame costs one request and nothing else.
   Future<void> _refreshLive() async {
     if (UserSession.current == null) return;
     try {
       final uri = Uri.parse('${UserSession.baseUrl}/api/aqi/live');
-      final res = await http
+      final res = await _client
           .get(uri, headers: _authHeaders)
           .timeout(const Duration(seconds: 5));
-      if (res.statusCode != 200) return;
+      if (res.statusCode != 200) {
+        _liveMisses++;
+        _liveSkip = math.min(_liveMisses, 15); // cap the back-off at ~30s
+        return;
+      }
+      _liveMisses = 0;
+      _liveSkip = 0;
 
       final json = jsonDecode(res.body) as List<dynamic>;
-      _liveBySensorId.clear();
+      final next = <String, LiveReading>{};
       for (final raw in json) {
         final r = raw as Map<String, dynamic>;
         final id = r['deviceId']?.toString();
@@ -223,13 +316,20 @@ class AppState extends ChangeNotifier {
         final live = LiveReading.fromJson(r);
         // Absent means no data, same convention _readingsBySensorId uses —
         // a stale frame (device gone quiet) shouldn't keep showing as live.
-        if (live.available && !live.stale) _liveBySensorId[id] = live;
+        if (live.available && !live.stale) next[id] = live;
       }
-      notifyListeners();
+
+      // Only publish (and therefore rebuild the live widgets) when a rendered
+      // value actually changed — LiveReading equality ignores receivedAt.
+      if (!mapEquals(liveReadings.value, next)) {
+        liveReadings.value = next;
+      }
     } catch (_) {
       // Silent on purpose: this polls every 2s, far more often than the main
       // refresh, and a transient miss shouldn't flash an error banner. The
       // UI already falls back to "No data" once entries age out above.
+      _liveMisses++;
+      _liveSkip = math.min(_liveMisses, 15);
     }
   }
 
@@ -249,15 +349,19 @@ class AppState extends ChangeNotifier {
       final readingsUri = Uri.parse('${UserSession.baseUrl}/api/aqi/latest');
 
       final responses = await Future.wait([
-        http.get(devicesUri, headers: _authHeaders).timeout(const Duration(seconds: 5)),
-        http.get(readingsUri, headers: _authHeaders).timeout(const Duration(seconds: 5)),
+        _client.get(devicesUri, headers: _authHeaders).timeout(const Duration(seconds: 5)),
+        _client.get(readingsUri, headers: _authHeaders).timeout(const Duration(seconds: 5)),
       ]);
 
       if (responses[0].statusCode != 200 || responses[1].statusCode != 200) {
         _refreshError = 'Server error. Please try again.';
+        _autoMisses++;
+        _autoSkip = math.min(_autoMisses, 6); // cap the back-off at ~60s
         notifyListeners();
         return;
       }
+      _autoMisses = 0;
+      _autoSkip = 0;
 
       final devicesJson = jsonDecode(responses[0].body) as List<dynamic>;
       final readingsJson = jsonDecode(responses[1].body) as List<dynamic>;
@@ -302,6 +406,7 @@ class AppState extends ChangeNotifier {
           enabled: d['enabled'] as bool? ?? true,
         );
       }).toList();
+      _recomputeRooms();
 
       // Drop readings for offline devices so the home screen clears stale data.
       for (final sensor in _sensors) {
@@ -324,6 +429,8 @@ class AppState extends ChangeNotifier {
       // Network/DNS error — keep last known state, but expose the failure so
       // the UI can show it when there's nothing to fall back on.
       _refreshError = 'Could not reach the server. Check your internet connection.';
+      _autoMisses++;
+      _autoSkip = math.min(_autoMisses, 6);
       notifyListeners();
     }
   }
@@ -390,7 +497,7 @@ class AppState extends ChangeNotifier {
   Future<String?> shareDevice(String deviceId, String email) async {
     try {
       final uri = Uri.parse('${UserSession.baseUrl}/api/device/$deviceId/share');
-      final res = await http.post(
+      final res = await _client.post(
         uri,
         headers: _authHeaders,
         body: jsonEncode({'email': email}),
@@ -407,7 +514,7 @@ class AppState extends ChangeNotifier {
   Future<String?> unshareDevice(String deviceId, String email) async {
     try {
       final uri = Uri.parse('${UserSession.baseUrl}/api/device/$deviceId/unshare');
-      final res = await http.post(
+      final res = await _client.post(
         uri,
         headers: _authHeaders,
         body: jsonEncode({'email': email}),
@@ -425,7 +532,7 @@ class AppState extends ChangeNotifier {
   Future<String?> resetDevice(String deviceId) async {
     try {
       final uri = Uri.parse('${UserSession.baseUrl}/api/device/$deviceId/reset');
-      final res = await http.post(uri, headers: _authHeaders).timeout(const Duration(seconds: 10));
+      final res = await _client.post(uri, headers: _authHeaders).timeout(const Duration(seconds: 10));
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode == 200) return null;
       return body['error']?.toString() ?? 'Failed to send reset command';
@@ -439,7 +546,7 @@ class AppState extends ChangeNotifier {
   Future<String?> setDevicePower(String deviceId, bool on) async {
     final uri = Uri.parse('${UserSession.baseUrl}/api/device/$deviceId/power');
     try {
-      final res = await http.post(
+      final res = await _client.post(
         uri,
         headers: _authHeaders,
         body: jsonEncode({'on': on}),
@@ -464,7 +571,7 @@ class AppState extends ChangeNotifier {
   Future<String?> updateDevice(String deviceId, String name, String room) async {
     final uri = Uri.parse('${UserSession.baseUrl}/api/device/$deviceId');
     try {
-      final res = await http.patch(
+      final res = await _client.patch(
         uri,
         headers: _authHeaders,
         body: jsonEncode({'name': name, 'room': room}),
@@ -475,6 +582,7 @@ class AppState extends ChangeNotifier {
         _sensors = _sensors
             .map((s) => s.id == deviceId ? s.copyWith(name: name, room: room) : s)
             .toList();
+        _recomputeRooms();
         notifyListeners();
         return null;
       }
@@ -488,7 +596,7 @@ class AppState extends ChangeNotifier {
   Future<List<Map<String, dynamic>>> getDeviceUsers(String deviceId) async {
     try {
       final uri = Uri.parse('${UserSession.baseUrl}/api/device/$deviceId/users');
-      final res = await http.get(uri, headers: _authHeaders).timeout(const Duration(seconds: 5));
+      final res = await _client.get(uri, headers: _authHeaders).timeout(const Duration(seconds: 5));
       if (res.statusCode != 200) return [];
       final list = jsonDecode(res.body) as List<dynamic>;
       return list.cast<Map<String, dynamic>>();
@@ -624,6 +732,8 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _refreshTimer?.cancel();
     _liveTimer?.cancel();
+    _client.close();
+    liveReadings.dispose();
     super.dispose();
   }
 }
@@ -745,4 +855,28 @@ class LiveReading {
           DateTime.now(),
     );
   }
+
+  // Equality over the fields that actually render, so the 2s poll can skip
+  // publishing (and rebuilding) an unchanged frame. receivedAt is deliberately
+  // excluded — it ticks every frame and only feeds a relative "Xs ago" label,
+  // which is fine to refresh when a value changes.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LiveReading &&
+          other.available == available &&
+          other.stale == stale &&
+          other.aqiInstant == aqiInstant &&
+          other.pm1 == pm1 &&
+          other.pm25 == pm25 &&
+          other.pm10 == pm10 &&
+          other.tvoc == tvoc &&
+          other.co2 == co2 &&
+          other.formaldehyde == formaldehyde &&
+          other.temperature == temperature &&
+          other.humidity == humidity;
+
+  @override
+  int get hashCode => Object.hash(available, stale, aqiInstant, pm1, pm25, pm10,
+      tvoc, co2, formaldehyde, temperature, humidity);
 }

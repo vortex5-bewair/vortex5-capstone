@@ -24,6 +24,10 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   void initState() {
     super.initState();
     widget.appState.addListener(_onChange);
+    // This screen shows per-frame numbers, so it holds the 2s live poll open
+    // and rebuilds when the live map actually changes (not on every tick).
+    widget.appState.liveReadings.addListener(_onChange);
+    widget.appState.retainLive();
     // Mark this sensor as the active one so AppState's metric getters apply to it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.appState.connectSensor(widget.sensorId);
@@ -33,6 +37,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   @override
   void dispose() {
     widget.appState.removeListener(_onChange);
+    widget.appState.liveReadings.removeListener(_onChange);
+    widget.appState.releaseLive();
     super.dispose();
   }
 
