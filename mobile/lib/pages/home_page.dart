@@ -659,7 +659,7 @@ class _SensorPanel extends StatelessWidget {
               Text(
                 'Updated ${_timeAgo(reading!.receivedAt)}',
                 style: const TextStyle(
-                  color: Color(0xFF94A3B8),
+                  color: Color(0xFF5B6674),
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
@@ -785,7 +785,7 @@ class _SensorPanel extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w500,
                       fontSize: 12,
-                      color: Color(0xFF94A3B8),
+                      color: Color(0xFF5B6674),
                     ),
                   ),
                 ],
@@ -843,7 +843,7 @@ class _SensorPanel extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text(
                     c.unit,
-                    style: const TextStyle(color: Color(0xFF94A3B8)),
+                    style: const TextStyle(color: Color(0xFF5B6674)),
                   ),
                 ),
                 const Spacer(),
@@ -955,7 +955,7 @@ _Insight _insightFor(String key, double v) {
   final field = _insightFields[key];
   final band = field == null ? null : AirQualityBands.current?.bandFor(field, v);
   if (band == null) {
-    return const _Insight('—', Color(0xFF94A3B8), 'No insight available.');
+    return const _Insight('—', Color(0xFF5B6674), 'No insight available.');
   }
   return _Insight(band.level, band.color, band.advice);
 }
@@ -1110,7 +1110,7 @@ class _RecommendedActionsCardState extends State<_RecommendedActionsCard> {
               ),
               const Text(
                 'Source: U.S. EPA AirNow',
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                style: TextStyle(color: Color(0xFF5B6674), fontSize: 11),
               ),
               Semantics(
                 button: true,
@@ -1159,7 +1159,7 @@ class _StatusBadge extends StatelessWidget {
     final String label;
 
     if (!enabled) {
-      dotColor = const Color(0xFF94A3B8);
+      dotColor = const Color(0xFF5B6674);
       label = 'Off';
     } else if (status == SensorStatus.offline) {
       dotColor = const Color(0xFFEF4444);

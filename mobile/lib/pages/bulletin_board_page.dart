@@ -240,7 +240,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
                   Text(
                     'Loading announcements…\nServer may take a moment to wake up.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13),
+                    style: GoogleFonts.inter(color: const Color(0xFF5B6674), fontSize: 13),
                   ),
                 ],
               ),
@@ -506,7 +506,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12),
+              style: GoogleFonts.inter(color: const Color(0xFF5B6674), fontSize: 12),
             ),
             const SizedBox(height: 16),
             TextButton.icon(

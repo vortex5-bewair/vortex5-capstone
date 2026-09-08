@@ -36,7 +36,7 @@ class ErrorState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              style: const TextStyle(color: Color(0xFF5B6674), fontSize: 12),
             ),
             const SizedBox(height: 16),
             TextButton.icon(

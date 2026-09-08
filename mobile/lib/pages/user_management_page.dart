@@ -225,7 +225,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   const SizedBox(height: 4),
                   Text(
                     'This is your own account — role changes and deletion are not available here.',
-                    style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8)),
+                    style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF5B6674)),
                   ),
                 ],
               ],

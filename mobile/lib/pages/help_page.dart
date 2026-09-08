@@ -39,7 +39,7 @@ class HelpPage extends StatelessWidget {
           if (bands == null)
             Text(
               'Band details are still loading.',
-              style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13),
+              style: GoogleFonts.inter(color: const Color(0xFF5B6674), fontSize: 13),
             ),
 
           const SizedBox(height: 28),
@@ -60,7 +60,7 @@ class HelpPage extends StatelessWidget {
                 'element rather than measured directly — read them as trends.\n\n'
                 'Sources: ${bands.source}',
                 style: GoogleFonts.inter(
-                    color: const Color(0xFF94A3B8), fontSize: 11.5, height: 1.45),
+                    color: const Color(0xFF5B6674), fontSize: 11.5, height: 1.45),
               ),
             ),
 

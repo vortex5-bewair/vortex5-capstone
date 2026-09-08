@@ -76,7 +76,7 @@ class _AlertPageState extends State<AlertPage> {
                                 'Loading alerts…\nServer may take a moment to wake up.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Color(0xFF94A3B8),
+                                  color: Color(0xFF5B6674),
                                   fontSize: 13,
                                 ),
                               ),
@@ -322,7 +322,7 @@ class _AlertPageState extends State<AlertPage> {
                   Text(
                     _timeAgo(alert.createdAt),
                     style: const TextStyle(
-                      color: Color(0xFF94A3B8),
+                      color: Color(0xFF5B6674),
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                     ),
@@ -411,7 +411,7 @@ class _AlertPageState extends State<AlertPage> {
                 Text(
                   _formattedDate(alert.createdAt),
                   style: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                    color: Color(0xFF5B6674),
                     fontSize: 13,
                   ),
                 ),
