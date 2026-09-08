@@ -1,8 +1,10 @@
-import { createContext, useReducer,useEffect } from "react";
+import { useReducer, useEffect } from "react";
+import { AuthContext } from "./authContextObject.js";
 
-export const AuthContext = createContext()
-
-export const authReducer = (state, action) => {
+// Not exported — nothing outside this file uses it directly (consumers go
+// through useAuthContext()/AuthContextProvider), and this file must export
+// only components for Fast Refresh to hot-patch it (see authContextObject.js).
+const authReducer = (state, action) => {
     switch (action.type) {
         case 'LOGIN':
             return { ...state, user: action.payload }

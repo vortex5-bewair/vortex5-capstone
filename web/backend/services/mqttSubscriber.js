@@ -304,6 +304,13 @@ function getLiveReading(deviceId) {
   }
 }
 
+// For the health check route — same `_client && _client.connected` idiom
+// publishCommand already uses, exposed as a getter so callers can't touch
+// the client itself.
+function isConnected() {
+  return !!(_client && _client.connected)
+}
+
 function publishCommand(deviceId, command) {
   return new Promise((resolve, reject) => {
     if (!_client || !_client.connected) {
@@ -338,4 +345,5 @@ module.exports = {
   liveEvents,
   acquireStreamSlot,
   releaseStreamSlot,
+  isConnected,
 }

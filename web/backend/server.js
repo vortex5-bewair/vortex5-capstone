@@ -4,6 +4,7 @@ require('dotenv').config()
 
 const express = require('express')
 const mongoose = require('mongoose')
+const healthRoutes = require('./routes/health')
 const AqiRoutes = require('./routes/aqi')
 const userRoutes = require('./routes/user')
 const ThresholdRoutes = require('./routes/threshold')
@@ -40,6 +41,8 @@ app.use(cors({
 }))
 
 // routes
+// Public: Render's rolling-deploy health check polls this (no auth token to send).
+app.use('/api/health',        healthRoutes)
 app.use('/api/aqi',           AqiRoutes)
 app.use('/api/user',          userRoutes)
 app.use('/api/threshold',     ThresholdRoutes)

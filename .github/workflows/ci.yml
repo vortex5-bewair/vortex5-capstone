@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/backend/package-lock.json
+      # No lint config and no usable test script exist for the backend yet
+      # (`npm test` is a stub that always exits 1 by project convention) —
+      # `npm ci` succeeding is still a real gate: it fails on a broken
+      # lockfile, an unresolvable dependency, or a corrupted package.json,
+      # which is close to what Render's own build step does.
+      - run: npm ci
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      # Succeeds with no env vars set — the one import.meta.env usage in
+      # src/ (resolveMediaUrl.js) has a hardcoded fallback.
+      - run: npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Not `flutter test`: mobile/test/widget_test.dart is still the
+      # unmodified Flutter template's counter-app smoke test (this app has
+      # no counter) — same "stub, don't gate on it" treatment as the
+      # backend's test script. analysis_options.yaml already extends
+      # flutter_lints plus several custom const-usage rules, so this is
+      # real, already-configured coverage.
+      #
+      # --no-fatal-infos: `--fatal-infos` defaults to on, so `flutter
+      # analyze` exits 1 on info-level findings too — this app currently has
+      # 8 pre-existing `deprecated_member_use` infos (wifi_iot, withOpacity)
+      # that are known, harmless, and not what this gate is for. Real
+      # warnings/errors still fail the build (`--fatal-warnings` stays on).
+      - run: flutter analyze --no-fatal-infos
