@@ -34,8 +34,14 @@ jobs:
           echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > firebase-sa.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/firebase-sa.json" >> "$GITHUB_ENV"
 
+      # Pinned: firebase-tools >=15.22.2 has a regression that breaks
+      # GOOGLE_APPLICATION_CREDENTIALS/ADC auth in CI, throwing "Failed to
+      # authenticate, have you run firebase login?" even with a valid service
+      # account (https://github.com/firebase/firebase-tools/issues/10716).
+      # 15.22.1 is the last confirmed-working version. Revisit this pin once
+      # that issue is closed upstream.
       - name: Install Firebase CLI
-        run: npm install -g firebase-tools
+        run: npm install -g firebase-tools@15.22.1
 
       - name: Distribute to testers
         run: |
