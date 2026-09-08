@@ -330,7 +330,7 @@ const BulletinBoard = () => {
       {/* === Top header bar === */}
       <div className="kiosk-header">
         <div className="kiosk-brand">
-          <img src={bewAirLogo} alt="BewAir" />
+          <img src={bewAirLogo} alt="BewAir" width={40} height={40} />
           <span>BewAir</span>
         </div>
         <div className="kiosk-clock">
@@ -361,7 +361,7 @@ const BulletinBoard = () => {
             </>
           ) : (
             <div className="kiosk-stage-placeholder">
-              <img src={bewAirLogo} alt="" />
+              <img src={bewAirLogo} alt="" width={96} height={96} />
               <p>No animations available</p>
             </div>
           )}

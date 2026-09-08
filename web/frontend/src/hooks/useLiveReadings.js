@@ -1,8 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuthContext } from './useAuthContext'
 
 const RECONNECT_BASE_MS = 1000
 const RECONNECT_MAX_MS = 30000
+
+// How long to let the SSE connection attempt run before also starting the
+// polling fallback. On a normal connection the stream's response headers
+// come back well inside this window, so the fallback timer gets cleared and
+// /api/aqi/live is never hit at all -- it used to fire unconditionally on
+// every single mount "just in case," even when the stream was about to
+// succeed anyway.
+const FALLBACK_GRACE_MS = 800
+
+// How often stale/age state re-publishes with no new data (see the ticker
+// below). Any value keeps the "Xs ago" labels moving; it is a trade
+// between how live that feels and how much work every mounted device card
+// redoes -- 1s made the whole grid recompute every device's staleness and
+// category once a second, work that scales with device count for no
+// visible benefit between ticks.
+const FRESHNESS_TICK_MS = 3000
 
 // Matches the backend's default AQI_LIVE_STALE_SEC. A display-only heuristic
 // (when to say "Reconnecting..." instead of a climbing age), not a data
@@ -54,6 +70,7 @@ export function useLiveReadings({ fallbackPollMs = 5000 } = {}) {
     let abortController = null
     let reconnectTimer = null
     let fallbackTimer = null
+    let fallbackGraceTimer = null
     let reconnectDelay = RECONNECT_BASE_MS
     const byDevice = new Map()
 
@@ -63,7 +80,7 @@ export function useLiveReadings({ fallbackPollMs = 5000 } = {}) {
 
     // Re-publish every second even with no new data, so a reading's age keeps
     // counting up — and flips to stale — purely from time passing.
-    const freshnessTicker = setInterval(publish, 1000)
+    const freshnessTicker = setInterval(publish, FRESHNESS_TICK_MS)
 
     const stopFallback = () => {
       if (fallbackTimer) clearInterval(fallbackTimer)
@@ -101,7 +118,7 @@ export function useLiveReadings({ fallbackPollMs = 5000 } = {}) {
 
     const connect = async () => {
       if (cancelled || document.hidden) return
-      startFallback() // covers the gap until the stream proves itself
+      fallbackGraceTimer = setTimeout(startFallback, FALLBACK_GRACE_MS)
 
       abortController = new AbortController()
       try {
@@ -111,6 +128,7 @@ export function useLiveReadings({ fallbackPollMs = 5000 } = {}) {
         })
         if (!res.ok || !res.body) throw new Error(`Stream failed (${res.status})`)
 
+        clearTimeout(fallbackGraceTimer)
         reconnectDelay = RECONNECT_BASE_MS // connected — reset backoff
         stopFallback()
         setError('')
@@ -147,6 +165,7 @@ export function useLiveReadings({ fallbackPollMs = 5000 } = {}) {
         }
         throw new Error('Live stream closed') // falls into reconnect below
       } catch (err) {
+        clearTimeout(fallbackGraceTimer)
         if (cancelled || err.name === 'AbortError') return
         startFallback()
         scheduleReconnect()
@@ -161,6 +180,7 @@ export function useLiveReadings({ fallbackPollMs = 5000 } = {}) {
       if (document.hidden) {
         abortController?.abort()
         stopFallback()
+        clearTimeout(fallbackGraceTimer)
       } else {
         reconnectDelay = RECONNECT_BASE_MS
         connect()
@@ -175,15 +195,28 @@ export function useLiveReadings({ fallbackPollMs = 5000 } = {}) {
       abortController?.abort()
       stopFallback()
       clearInterval(freshnessTicker)
+      clearTimeout(fallbackGraceTimer)
       if (reconnectTimer) clearTimeout(reconnectTimer)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [user, fallbackPollMs])
 
-  return { data, error }
+  // A per-device Map, rebuilt only when `data` itself changes — not on every
+  // render. Callers that look up one device per row (Dashboard, My Devices,
+  // Device Detail) used to do a linear `.find()` over the whole array once
+  // per device, per render: O(devices) work repeated for every device, i.e.
+  // O(devices²) for the page. `.get()` here is O(1).
+  const dataByDevice = useMemo(() => {
+    if (!data) return null
+    const map = new Map()
+    for (const r of data) map.set(r.deviceId, r)
+    return map
+  }, [data])
+
+  return { data, dataByDevice, error }
 }
 
-/** Find one device's entry in the array returned by useLiveReadings. */
-export function findLiveReading(data, deviceId) {
-  return data?.find((d) => d.deviceId === deviceId) || null
+/** Find one device's entry in the Map returned by useLiveReadings as `dataByDevice`. */
+export function findLiveReading(dataByDevice, deviceId) {
+  return dataByDevice?.get(deviceId) || null
 }

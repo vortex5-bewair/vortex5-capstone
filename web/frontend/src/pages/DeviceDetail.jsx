@@ -59,8 +59,8 @@ const DeviceDetail = () => {
   // ---------- Live reading (2s, in-memory, separate from the stored/reported
   // poll below) — mounted once at the page level, per useLiveReadings' own
   // contract, even though this page only ever shows one device. ----------
-  const { data: liveData } = useLiveReadings()
-  const live = findLiveReading(liveData, deviceId)
+  const { dataByDevice: liveByDevice } = useLiveReadings()
+  const live = findLiveReading(liveByDevice, deviceId)
 
   // Client-side sparkline: the backend only keeps ~15s of window for
   // smoothing, so the ~60s history shown here is accumulated from what this

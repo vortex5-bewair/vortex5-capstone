@@ -3614,6 +3614,15 @@ input, select {
   margin: 0 auto;
 }
 
+/* The brief "Loading..." state on first visit (Dashboard, My Devices,
+   Alerts) used to be a bare couple of lines of text that then snapped to the
+   page's full height once data arrived — exactly the kind of layout shift
+   Lighthouse's CLS audit measures. Reserving roughly the eventual page's
+   footprint up front means that swap barely moves anything. */
+.dash-page-loading {
+  min-height: 60vh;
+}
+
 .dash-header {
   display: flex;
   justify-content: space-between;

@@ -35,7 +35,7 @@ const AdminDashboard = () => {
 
   // Liveness only (no live figure on this scanning screen) — mounted once
   // here at the page level, never inside a device card.
-  const { data: liveList } = useLiveReadings()
+  const { dataByDevice: liveByDevice } = useLiveReadings()
 
   useEffect(() => {
     if (!user) return
@@ -64,13 +64,13 @@ const AdminDashboard = () => {
   }, [user])
 
   if (loading) {
-    return <div className="dash-page"><p>Loading dashboard...</p></div>
+    return <div className="dash-page dash-page-loading"><p>Loading dashboard...</p></div>
   }
   // Only take over the whole page when there's no data to fall back on
   // (first-load failure). Once real data has loaded, a later transient
   // poll failure shouldn't wipe out an otherwise-working dashboard.
   if (error && !data) {
-    return <div className="dash-page"><p style={{ color: 'red' }}>{error}</p></div>
+    return <div className="dash-page dash-page-loading"><p style={{ color: 'red' }}>{error}</p></div>
   }
   if (!data) return null
 
@@ -150,7 +150,7 @@ const AdminDashboard = () => {
               const aqiColor = d.category
                 ? CATEGORY_COLORS[d.category]
                 : '#94a3b8'
-              const live = findLiveReading(liveList, d.deviceId)
+              const live = findLiveReading(liveByDevice, d.deviceId)
               return (
                 <div
                   key={d.deviceId}

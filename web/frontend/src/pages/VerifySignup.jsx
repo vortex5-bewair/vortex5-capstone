@@ -37,7 +37,7 @@ const VerifySignup = () => {
       {/* ── Left branded panel ── */}
       <div className="auth-panel-left">
         <div className="auth-brand-panel">
-          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" />
+          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" width={240} height={240} />
           <div className="auth-panel-name">BewAir</div>
           <p className="auth-panel-tagline">
             Real-time air quality monitoring for healthier learning environments.

@@ -31,6 +31,8 @@ export default function Avatar({ src, name, email, size = 40, className = '' }) 
           className="avatar-img"
           src={resolveMediaUrl(src)}
           alt=""
+          width={size}
+          height={size}
           onError={() => setFailedSrc(src)}
         />
       ) : (
