@@ -225,6 +225,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
         actions: [
           if (isAdmin)
             IconButton(
+              tooltip: 'New announcement',
               onPressed: _openCreatePage,
               icon: const Icon(Icons.add_comment_outlined, color: Colors.white),
             ),
@@ -240,7 +241,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
                   Text(
                     'Loading announcements…\nServer may take a moment to wake up.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13),
+                    style: GoogleFonts.inter(color: const Color(0xFF5B6674), fontSize: 13),
                   ),
                 ],
               ),
@@ -330,7 +331,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
 
   Widget _categoryDropdown() {
     return Container(
-      height: 48,
+      constraints: const BoxConstraints(minHeight: 48),
       width: 150,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -342,7 +343,9 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
         child: DropdownButton<String>(
           value: _selectedCategory,
           isExpanded: true,
-          // No isDense: keeps the button at the 48dp minimum tap target.
+          // No isDense, plus vertical padding, so the button's own tap area
+          // (not just the text row) meets the 48dp minimum the scanner checks.
+          padding: const EdgeInsets.symmetric(vertical: 12),
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
               size: 18, color: Color(0xFF64748B)),
           borderRadius: BorderRadius.circular(14),
@@ -413,30 +416,39 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
               ),
               if (post.pinned && !isAdmin) ...[
                 const SizedBox(width: 6),
-                const Icon(Icons.push_pin_rounded,
-                    size: 14, color: Color(0xFF1E5BFF)),
+                Semantics(
+                  label: 'Pinned',
+                  child: const Icon(Icons.push_pin_rounded,
+                      size: 14, color: Color(0xFF1E5BFF)),
+                ),
               ],
               const Spacer(),
               if (isAdmin) ...[
-                GestureDetector(
-                  onTap: () => _togglePin(post),
-                  child: Icon(
+                // IconButtons (not bare GestureDetectors) so each has a
+                // screen-reader label and the 48dp minimum tap target.
+                IconButton(
+                  tooltip: post.pinned ? 'Unpin announcement' : 'Pin announcement',
+                  onPressed: () => _togglePin(post),
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
                     post.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                    size: 18,
-                    color: post.pinned ? _blue : const Color(0xFFCBD5E1),
+                    size: 20,
+                    color: post.pinned ? _blue : const Color(0xFF64748B),
                   ),
                 ),
-                const SizedBox(width: 14),
-                GestureDetector(
-                  onTap: () => _openEditPage(post),
-                  child: const Icon(Icons.edit_outlined,
-                      size: 18, color: Color(0xFFCBD5E1)),
+                IconButton(
+                  tooltip: 'Edit announcement',
+                  onPressed: () => _openEditPage(post),
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.edit_outlined,
+                      size: 20, color: Color(0xFF64748B)),
                 ),
-                const SizedBox(width: 14),
-                GestureDetector(
-                  onTap: () => _confirmDelete(post),
-                  child: const Icon(Icons.delete_outline_rounded,
-                      size: 18, color: Color(0xFFCBD5E1)),
+                IconButton(
+                  tooltip: 'Delete announcement',
+                  onPressed: () => _confirmDelete(post),
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      size: 20, color: Color(0xFF64748B)),
                 ),
               ],
             ],
@@ -506,7 +518,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12),
+              style: GoogleFonts.inter(color: const Color(0xFF5B6674), fontSize: 12),
             ),
             const SizedBox(height: 16),
             TextButton.icon(

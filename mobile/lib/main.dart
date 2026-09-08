@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vortex5_application_2/pages/splash_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Keep the semantics tree built for the whole app lifetime. Flutter builds
+  // it lazily — only while an assistive service it recognises is active — so
+  // static a11y auditors like Google Accessibility Scanner otherwise see bare
+  // pixels and flag every Text as "unexposed". The handle is intentionally
+  // never disposed.
+  SemanticsBinding.instance.ensureSemantics();
 
   // Poppins + Inter ship under assets/google_fonts/ (see pubspec.yaml), so
   // every GoogleFonts.poppins()/inter() call resolves from the app bundle.

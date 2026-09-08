@@ -76,7 +76,7 @@ class _AlertPageState extends State<AlertPage> {
                                 'Loading alerts…\nServer may take a moment to wake up.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Color(0xFF94A3B8),
+                                  color: Color(0xFF5B6674),
                                   fontSize: 13,
                                 ),
                               ),
@@ -194,7 +194,7 @@ class _AlertPageState extends State<AlertPage> {
   // ── Metric filter dropdown ───────────────────────────────────────────────
   Widget _metricDropdown() {
     return Container(
-      height: 48,
+      constraints: const BoxConstraints(minHeight: 48),
       width: 150,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -206,7 +206,9 @@ class _AlertPageState extends State<AlertPage> {
         child: DropdownButton<String>(
           value: _metricFilter,
           isExpanded: true,
-          // No isDense: keeps the button at the 48dp minimum tap target.
+          // No isDense, plus vertical padding, so the button's own tap area
+          // (not just the text row) meets the 48dp minimum the scanner checks.
+          padding: const EdgeInsets.symmetric(vertical: 12),
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
               size: 18, color: Color(0xFF64748B)),
           borderRadius: BorderRadius.circular(14),
@@ -322,7 +324,7 @@ class _AlertPageState extends State<AlertPage> {
                   Text(
                     _timeAgo(alert.createdAt),
                     style: const TextStyle(
-                      color: Color(0xFF94A3B8),
+                      color: Color(0xFF5B6674),
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                     ),
@@ -411,7 +413,7 @@ class _AlertPageState extends State<AlertPage> {
                 Text(
                   _formattedDate(alert.createdAt),
                   style: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                    color: Color(0xFF5B6674),
                     fontSize: 13,
                   ),
                 ),

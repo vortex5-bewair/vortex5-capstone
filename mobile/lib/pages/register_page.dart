@@ -263,8 +263,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       decoration: _fieldDeco(
                         hint: 'Create a strong password',
                         suffix: IconButton(
-                          tooltip:
-                              _showPass ? 'Hide password' : 'Show password',
+                          tooltip: _showPass
+                              ? 'Hide password'
+                              : 'Show password',
                           onPressed: () =>
                               setState(() => _showPass = !_showPass),
                           icon: Icon(
@@ -286,8 +287,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         hint: 'Confirm password',
                         suffix: IconButton(
                           tooltip: _showConfirm
-                              ? 'Hide password'
-                              : 'Show password',
+                              ? 'Hide confirmation password'
+                              : 'Show confirmation password',
                           onPressed: () =>
                               setState(() => _showConfirm = !_showConfirm),
                           icon: Icon(
