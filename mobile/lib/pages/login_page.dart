@@ -90,6 +90,7 @@ class _LoginPageState extends State<LoginPage> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
+                  tooltip: 'Back',
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.arrow_back_ios_new_rounded,
                       color: Color(0xFF1E5BFF)),
@@ -188,6 +189,9 @@ class _LoginPageState extends State<LoginPage> {
                       decoration: _fieldDeco(
                         hint: 'Enter your password',
                         suffix: IconButton(
+                          tooltip: _showPassword
+                              ? 'Hide password'
+                              : 'Show password',
                           onPressed: () =>
                               setState(() => _showPassword = !_showPassword),
                           icon: Icon(
@@ -202,6 +206,10 @@ class _LoginPageState extends State<LoginPage> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(48, 48),
+                          tapTargetSize: MaterialTapTargetSize.padded,
+                        ),
                         onPressed: () {
                           Navigator.push(
                             context,

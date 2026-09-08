@@ -194,7 +194,7 @@ class _AlertPageState extends State<AlertPage> {
   // ── Metric filter dropdown ───────────────────────────────────────────────
   Widget _metricDropdown() {
     return Container(
-      height: 40,
+      height: 48,
       width: 150,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -206,7 +206,7 @@ class _AlertPageState extends State<AlertPage> {
         child: DropdownButton<String>(
           value: _metricFilter,
           isExpanded: true,
-          isDense: true,
+          // No isDense: keeps the button at the 48dp minimum tap target.
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
               size: 18, color: Color(0xFF64748B)),
           borderRadius: BorderRadius.circular(14),

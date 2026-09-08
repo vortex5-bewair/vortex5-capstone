@@ -240,8 +240,9 @@ class _ProfilePageState extends State<ProfilePage> {
           // ── Sign out — plain, unboxed ───────────────────────────────────
           InkWell(
             onTap: _signOut,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              alignment: Alignment.centerLeft,
               child: Text(
                 'Sign out',
                 style: GoogleFonts.inter(

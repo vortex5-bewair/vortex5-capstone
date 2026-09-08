@@ -307,8 +307,8 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
       style: GoogleFonts.inter(fontSize: 14),
       decoration: InputDecoration(
         hintText: 'Search announcements',
-        hintStyle: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF94A3B8)),
-        prefixIcon: const Icon(Icons.search, size: 20, color: Color(0xFF64748B)),
+        hintStyle: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF5B6674)),
+        prefixIcon: const Icon(Icons.search, size: 20, color: Color(0xFF475569)),
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -330,7 +330,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
 
   Widget _categoryDropdown() {
     return Container(
-      height: 46,
+      height: 48,
       width: 150,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -342,7 +342,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
         child: DropdownButton<String>(
           value: _selectedCategory,
           isExpanded: true,
-          isDense: true,
+          // No isDense: keeps the button at the 48dp minimum tap target.
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
               size: 18, color: Color(0xFF64748B)),
           borderRadius: BorderRadius.circular(14),

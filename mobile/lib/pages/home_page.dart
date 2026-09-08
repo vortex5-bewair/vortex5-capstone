@@ -338,7 +338,7 @@ class _HomePageState extends State<HomePage> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: value,
-                isDense: true,
+                // No isDense: keeps the button at the 48dp minimum tap target.
                 borderRadius: BorderRadius.circular(16),
                 icon: const Icon(Icons.keyboard_arrow_down,
                     size: 22, color: Color(0xFF64748B)),
@@ -466,6 +466,7 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
+            tooltip: 'Previous sensor',
             onPressed: _index > 0 ? () => _goTo(_index - 1) : null,
             icon: const Icon(Icons.chevron_left),
             style: IconButton.styleFrom(
@@ -493,6 +494,7 @@ class _HomePageState extends State<HomePage> {
             }),
           ),
           IconButton(
+            tooltip: 'Next sensor',
             onPressed: _index < count - 1 ? () => _goTo(_index + 1) : null,
             icon: const Icon(Icons.chevron_right),
             style: IconButton.styleFrom(
@@ -1044,23 +1046,31 @@ class _RecommendedActionsCardState extends State<_RecommendedActionsCard> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: () => setState(() => _expanded = true),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'See all actions',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
+              Semantics(
+                button: true,
+                label: 'See all actions',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _expanded = true),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'See all actions',
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(Icons.keyboard_arrow_down, size: 16, color: color),
+                      ],
                     ),
-                    const SizedBox(width: 2),
-                    Icon(Icons.keyboard_arrow_down, size: 16, color: color),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -1100,23 +1110,31 @@ class _RecommendedActionsCardState extends State<_RecommendedActionsCard> {
                 'Source: U.S. EPA AirNow',
                 style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
               ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () => setState(() => _expanded = false),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Show less',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
+              Semantics(
+                button: true,
+                label: 'Show less',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _expanded = false),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Show less',
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(Icons.keyboard_arrow_up, size: 16, color: color),
+                      ],
                     ),
-                    const SizedBox(width: 2),
-                    Icon(Icons.keyboard_arrow_up, size: 16, color: color),
-                  ],
+                  ),
                 ),
               ),
             ],
