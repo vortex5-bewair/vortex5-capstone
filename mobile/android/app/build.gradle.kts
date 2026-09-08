@@ -36,6 +36,19 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // The default output filename is app-release.apk — rename it so anyone
+    // sharing the built file manually (e.g. via Drive) hands out something
+    // that reads as the app, not a generic build artifact. Firebase App
+    // Distribution's own raw download link is served as "app.apk" by
+    // Firebase's servers regardless of this — that part isn't controllable
+    // from the app's build config.
+    applicationVariants.all {
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output.outputFileName = "BewAir-${versionName}.apk"
+        }
+    }
 }
 
 flutter {
