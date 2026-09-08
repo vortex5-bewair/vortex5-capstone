@@ -18,7 +18,7 @@ const DEPARTMENTS = [
 const STAFF_TYPES = ['Teacher', 'Student Teacher']
 
 const Profile = () => {
-  const { user } = useAuthContext()
+  const { user, dispatch } = useAuthContext()
 
   // Cached fetch — shows previous profile instantly on revisit, refreshes in bg.
   const { data: profile, loading, error: fetchError, refetch: refetchProfile } =
@@ -99,7 +99,10 @@ const Profile = () => {
       setEditing(false)
       setSuccessMessage('Profile updated successfully')
 
-      // Update the auth context's stored user too (name shows in header/navbar)
+      // Keep the auth context in sync — the dashboard greeting
+      // ("Welcome back, {name}"), header and navbar read firstName/lastName
+      // from `user`. Writing localStorage alone isn't enough: the in-memory
+      // `user` stays stale until a reload or re-login.
       const stored = JSON.parse(localStorage.getItem('user') || '{}')
       const updated = {
         ...stored,
@@ -110,6 +113,7 @@ const Profile = () => {
         staffType: data.staffType,
       }
       localStorage.setItem('user', JSON.stringify(updated))
+      dispatch({ type: 'LOGIN', payload: updated })
 
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (err) {
@@ -143,7 +147,9 @@ const Profile = () => {
       setSuccessMessage('Profile picture updated')
 
       const stored = JSON.parse(localStorage.getItem('user') || '{}')
-      localStorage.setItem('user', JSON.stringify({ ...stored, pictureUrl: data.pictureUrl }))
+      const updated = { ...stored, pictureUrl: data.pictureUrl }
+      localStorage.setItem('user', JSON.stringify(updated))
+      dispatch({ type: 'LOGIN', payload: updated })
 
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (err) {
