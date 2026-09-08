@@ -11,9 +11,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: SplashPage(),
+      // The default hint colour (black38) fails WCAG AA contrast on the pale
+      // field fills used across the app. One darker default here fixes every
+      // TextField placeholder without touching each page's _fieldDeco.
+      theme: ThemeData(
+        inputDecorationTheme: const InputDecorationTheme(
+          hintStyle: TextStyle(color: Color(0xFF5B6674)),
+        ),
+      ),
+      home: const SplashPage(),
     );
   }
 }

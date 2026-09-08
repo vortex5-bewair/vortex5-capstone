@@ -38,6 +38,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   'Confirm your password',
                   obscureText: obscure,
                   suffix: IconButton(
+                    tooltip: obscure ? 'Show password' : 'Hide password',
                     onPressed: () => setInnerState(() => obscure = !obscure),
                     icon: Icon(
                       obscure ? Icons.visibility : Icons.visibility_off,

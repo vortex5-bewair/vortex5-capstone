@@ -134,6 +134,7 @@ class _RegisterPageState extends State<RegisterPage> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
+          tooltip: 'Back',
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: Color(0xFF1E5BFF)),
           onPressed: () => Navigator.pop(context),
@@ -262,6 +263,8 @@ class _RegisterPageState extends State<RegisterPage> {
                       decoration: _fieldDeco(
                         hint: 'Create a strong password',
                         suffix: IconButton(
+                          tooltip:
+                              _showPass ? 'Hide password' : 'Show password',
                           onPressed: () =>
                               setState(() => _showPass = !_showPass),
                           icon: Icon(
@@ -282,6 +285,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       decoration: _fieldDeco(
                         hint: 'Confirm password',
                         suffix: IconButton(
+                          tooltip: _showConfirm
+                              ? 'Hide password'
+                              : 'Show password',
                           onPressed: () =>
                               setState(() => _showConfirm = !_showConfirm),
                           icon: Icon(

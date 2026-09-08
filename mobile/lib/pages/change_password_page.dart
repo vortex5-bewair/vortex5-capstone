@@ -88,6 +88,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             obscureText: !_showCurrent,
             decoration: _fieldDeco(
               suffix: IconButton(
+                tooltip: _showCurrent ? 'Hide password' : 'Show password',
                 onPressed: () => setState(() => _showCurrent = !_showCurrent),
                 icon: Icon(_showCurrent ? Icons.visibility_off : Icons.visibility),
               ),
@@ -100,6 +101,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             obscureText: !_showNew,
             decoration: _fieldDeco(
               suffix: IconButton(
+                tooltip: _showNew ? 'Hide password' : 'Show password',
                 onPressed: () => setState(() => _showNew = !_showNew),
                 icon: Icon(_showNew ? Icons.visibility_off : Icons.visibility),
               ),
@@ -116,6 +118,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             obscureText: !_showConfirm,
             decoration: _fieldDeco(
               suffix: IconButton(
+                tooltip: _showConfirm ? 'Hide password' : 'Show password',
                 onPressed: () => setState(() => _showConfirm = !_showConfirm),
                 icon: Icon(_showConfirm ? Icons.visibility_off : Icons.visibility),
               ),

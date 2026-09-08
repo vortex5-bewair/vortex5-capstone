@@ -326,6 +326,7 @@ class _ProvisioningCredentialsPageState
                   hintText: 'Tap to choose a network',
                   prefixIcon: const Icon(Icons.wifi),
                   suffixIcon: IconButton(
+                    tooltip: 'Choose Wi-Fi network',
                     icon: _scanningNetworks
                         ? const SizedBox(
                             width: 18, height: 18,
@@ -386,6 +387,7 @@ class _ProvisioningCredentialsPageState
                     borderRadius: BorderRadius.circular(12),
                   ),
                   suffixIcon: IconButton(
+                    tooltip: _hidePassword ? 'Show password' : 'Hide password',
                     icon: Icon(
                       _hidePassword
                           ? Icons.visibility_outlined
