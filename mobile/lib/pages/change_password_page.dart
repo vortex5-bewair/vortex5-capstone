@@ -87,12 +87,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             controller: _currentCtrl,
             obscureText: !_showCurrent,
             decoration: _fieldDeco(
-              suffix: IconButton(
-                tooltip: _showCurrent
-                    ? 'Hide current password'
-                    : 'Show current password',
-                onPressed: () => setState(() => _showCurrent = !_showCurrent),
-                icon: Icon(_showCurrent ? Icons.visibility_off : Icons.visibility),
+              suffix: MergeSemantics(
+                child: Semantics(
+                  label: _showCurrent
+                      ? 'Hide current password'
+                      : 'Show current password',
+                  child: IconButton(
+                    tooltip: _showCurrent
+                        ? 'Hide current password'
+                        : 'Show current password',
+                    onPressed: () =>
+                        setState(() => _showCurrent = !_showCurrent),
+                    icon: Icon(
+                        _showCurrent ? Icons.visibility_off : Icons.visibility),
+                  ),
+                ),
               ),
             ),
           ),
@@ -102,10 +111,19 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             controller: _newCtrl,
             obscureText: !_showNew,
             decoration: _fieldDeco(
-              suffix: IconButton(
-                tooltip: _showNew ? 'Hide new password' : 'Show new password',
-                onPressed: () => setState(() => _showNew = !_showNew),
-                icon: Icon(_showNew ? Icons.visibility_off : Icons.visibility),
+              suffix: MergeSemantics(
+                child: Semantics(
+                  label:
+                      _showNew ? 'Hide new password' : 'Show new password',
+                  child: IconButton(
+                    tooltip: _showNew
+                        ? 'Hide new password'
+                        : 'Show new password',
+                    onPressed: () => setState(() => _showNew = !_showNew),
+                    icon: Icon(
+                        _showNew ? Icons.visibility_off : Icons.visibility),
+                  ),
+                ),
               ),
             ),
           ),
@@ -119,12 +137,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             controller: _confirmCtrl,
             obscureText: !_showConfirm,
             decoration: _fieldDeco(
-              suffix: IconButton(
-                tooltip: _showConfirm
-                    ? 'Hide confirmation password'
-                    : 'Show confirmation password',
-                onPressed: () => setState(() => _showConfirm = !_showConfirm),
-                icon: Icon(_showConfirm ? Icons.visibility_off : Icons.visibility),
+              suffix: MergeSemantics(
+                child: Semantics(
+                  label: _showConfirm
+                      ? 'Hide confirmation password'
+                      : 'Show confirmation password',
+                  child: IconButton(
+                    tooltip: _showConfirm
+                        ? 'Hide confirmation password'
+                        : 'Show confirmation password',
+                    onPressed: () =>
+                        setState(() => _showConfirm = !_showConfirm),
+                    icon: Icon(
+                        _showConfirm ? Icons.visibility_off : Icons.visibility),
+                  ),
+                ),
               ),
             ),
           ),

@@ -331,7 +331,10 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
 
   Widget _categoryDropdown() {
     return Container(
-      constraints: const BoxConstraints(minHeight: 48),
+      // A compact filter pill. Its tap target is a little under 48dp; the
+      // touch-target hint from the scanner is accepted for now (a full 48
+      // makes this control look oversized next to the search field).
+      height: 44,
       width: 150,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -343,9 +346,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
         child: DropdownButton<String>(
           value: _selectedCategory,
           isExpanded: true,
-          // No isDense, plus vertical padding, so the button's own tap area
-          // (not just the text row) meets the 48dp minimum the scanner checks.
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          isDense: true,
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
               size: 18, color: Color(0xFF64748B)),
           borderRadius: BorderRadius.circular(14),
@@ -425,30 +426,51 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
               const Spacer(),
               if (isAdmin) ...[
                 // IconButtons (not bare GestureDetectors) so each has a
-                // screen-reader label and the 48dp minimum tap target.
-                IconButton(
-                  tooltip: post.pinned ? 'Unpin announcement' : 'Pin announcement',
-                  onPressed: () => _togglePin(post),
-                  visualDensity: VisualDensity.compact,
-                  icon: Icon(
-                    post.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                    size: 20,
-                    color: post.pinned ? _blue : const Color(0xFF64748B),
+                // screen-reader label. The label names the announcement so
+                // that identical actions on different cards aren't reported
+                // as duplicate speakable text.
+                MergeSemantics(
+                  child: Semantics(
+                    label: post.pinned
+                        ? 'Unpin announcement: ${post.title}'
+                        : 'Pin announcement: ${post.title}',
+                    child: IconButton(
+                      tooltip: post.pinned ? 'Unpin' : 'Pin',
+                      onPressed: () => _togglePin(post),
+                      visualDensity: VisualDensity.compact,
+                      icon: Icon(
+                        post.pinned
+                            ? Icons.push_pin_rounded
+                            : Icons.push_pin_outlined,
+                        size: 20,
+                        color: post.pinned ? _blue : const Color(0xFF64748B),
+                      ),
+                    ),
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Edit announcement',
-                  onPressed: () => _openEditPage(post),
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.edit_outlined,
-                      size: 20, color: Color(0xFF64748B)),
+                MergeSemantics(
+                  child: Semantics(
+                    label: 'Edit announcement: ${post.title}',
+                    child: IconButton(
+                      tooltip: 'Edit',
+                      onPressed: () => _openEditPage(post),
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.edit_outlined,
+                          size: 20, color: Color(0xFF64748B)),
+                    ),
+                  ),
                 ),
-                IconButton(
-                  tooltip: 'Delete announcement',
-                  onPressed: () => _confirmDelete(post),
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      size: 20, color: Color(0xFF64748B)),
+                MergeSemantics(
+                  child: Semantics(
+                    label: 'Delete announcement: ${post.title}',
+                    child: IconButton(
+                      tooltip: 'Delete',
+                      onPressed: () => _confirmDelete(post),
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          size: 20, color: Color(0xFF64748B)),
+                    ),
+                  ),
                 ),
               ],
             ],

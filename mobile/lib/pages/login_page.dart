@@ -188,16 +188,23 @@ class _LoginPageState extends State<LoginPage> {
                       obscureText: !_showPassword,
                       decoration: _fieldDeco(
                         hint: 'Enter your password',
-                        suffix: IconButton(
-                          tooltip: _showPassword
-                              ? 'Hide password'
-                              : 'Show password',
-                          onPressed: () =>
-                              setState(() => _showPassword = !_showPassword),
-                          icon: Icon(
-                            _showPassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                        suffix: MergeSemantics(
+                          child: Semantics(
+                            label: _showPassword
+                                ? 'Hide password'
+                                : 'Show password',
+                            child: IconButton(
+                              tooltip: _showPassword
+                                  ? 'Hide password'
+                                  : 'Show password',
+                              onPressed: () => setState(
+                                  () => _showPassword = !_showPassword),
+                              icon: Icon(
+                                _showPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                            ),
                           ),
                         ),
                       ),
