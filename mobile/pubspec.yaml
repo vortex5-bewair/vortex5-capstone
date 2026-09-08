@@ -83,6 +83,13 @@ flutter:
     # in web/backend after any change to config/airQualityBands.js.
     - assets/air_quality_bands.json
 
+    # Bundled Poppins + Inter (SIL OFL 1.1, licenses in the same folder) so
+    # google_fonts resolves every GoogleFonts.poppins()/inter() call from
+    # these assets instead of fetching + parsing the TTF over HTTP on first
+    # use of each screen. Paired with allowRuntimeFetching = false in main().
+    # File names follow google_fonts' <Family>-<Weight> convention.
+    - assets/google_fonts/
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
