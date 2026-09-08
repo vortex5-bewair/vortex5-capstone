@@ -194,7 +194,9 @@ class _AlertPageState extends State<AlertPage> {
   // ── Metric filter dropdown ───────────────────────────────────────────────
   Widget _metricDropdown() {
     return Container(
-      constraints: const BoxConstraints(minHeight: 48),
+      // Compact filter pill; the touch-target hint is accepted for now (a
+      // full 48dp makes this look oversized in the filter row).
+      height: 44,
       width: 150,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -206,9 +208,7 @@ class _AlertPageState extends State<AlertPage> {
         child: DropdownButton<String>(
           value: _metricFilter,
           isExpanded: true,
-          // No isDense, plus vertical padding, so the button's own tap area
-          // (not just the text row) meets the 48dp minimum the scanner checks.
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          isDense: true,
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
               size: 18, color: Color(0xFF64748B)),
           borderRadius: BorderRadius.circular(14),

@@ -262,14 +262,23 @@ class _RegisterPageState extends State<RegisterPage> {
                       obscureText: !_showPass,
                       decoration: _fieldDeco(
                         hint: 'Create a strong password',
-                        suffix: IconButton(
-                          tooltip: _showPass
-                              ? 'Hide password'
-                              : 'Show password',
-                          onPressed: () =>
-                              setState(() => _showPass = !_showPass),
-                          icon: Icon(
-                            _showPass ? Icons.visibility_off : Icons.visibility,
+                        suffix: MergeSemantics(
+                          child: Semantics(
+                            label: _showPass
+                                ? 'Hide password'
+                                : 'Show password',
+                            child: IconButton(
+                              tooltip: _showPass
+                                  ? 'Hide password'
+                                  : 'Show password',
+                              onPressed: () =>
+                                  setState(() => _showPass = !_showPass),
+                              icon: Icon(
+                                _showPass
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -285,16 +294,23 @@ class _RegisterPageState extends State<RegisterPage> {
                       obscureText: !_showConfirm,
                       decoration: _fieldDeco(
                         hint: 'Confirm password',
-                        suffix: IconButton(
-                          tooltip: _showConfirm
-                              ? 'Hide confirmation password'
-                              : 'Show confirmation password',
-                          onPressed: () =>
-                              setState(() => _showConfirm = !_showConfirm),
-                          icon: Icon(
-                            _showConfirm
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                        suffix: MergeSemantics(
+                          child: Semantics(
+                            label: _showConfirm
+                                ? 'Hide confirmation password'
+                                : 'Show confirmation password',
+                            child: IconButton(
+                              tooltip: _showConfirm
+                                  ? 'Hide confirmation password'
+                                  : 'Show confirmation password',
+                              onPressed: () =>
+                                  setState(() => _showConfirm = !_showConfirm),
+                              icon: Icon(
+                                _showConfirm
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                            ),
                           ),
                         ),
                       ),
