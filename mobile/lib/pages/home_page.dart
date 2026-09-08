@@ -337,7 +337,9 @@ class _HomePageState extends State<HomePage> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: value,
-                // No isDense: keeps the button at the 48dp minimum tap target.
+                // No isDense, plus vertical padding, so the button's own tap
+                // area meets the 48dp minimum the scanner checks.
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 borderRadius: BorderRadius.circular(16),
                 icon: const Icon(Icons.keyboard_arrow_down,
                     size: 22, color: Color(0xFF64748B)),
