@@ -63,7 +63,7 @@ const LandingPage = () => {
       <nav className={`landing-nav ${scrolled ? 'landing-nav-scrolled' : ''}`}>
         <div className="landing-nav-inner">
           <div className="landing-nav-brand">
-            <img src={scrolled ? bewairLogoBlack : bewairLogoWhite} alt="BewAir" />
+            <img src={scrolled ? bewairLogoBlack : bewairLogoWhite} alt="BewAir" width={30} height={30} />
             <span className={scrolled ? 'landing-nav-title-dark' : 'landing-nav-title-light'}>BewAir</span>
           </div>
           <div className="landing-nav-actions">
@@ -214,7 +214,7 @@ const LandingPage = () => {
       <footer className="landing-footer">
         <div className="landing-container landing-footer-inner">
           <div className="landing-footer-brand">
-            <img src={bewairLogoWhite} alt="BewAir" />
+            <img src={bewairLogoWhite} alt="BewAir" width={24} height={24} />
             <span>BewAir</span>
           </div>
           <p>Indoor air quality monitoring for schools.</p>

@@ -69,7 +69,7 @@ const Signup = () => {
       {/* ── Left branded panel ── */}
       <div className="auth-panel-left">
         <div className="auth-brand-panel">
-          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" />
+          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" width={240} height={240} />
           <div className="auth-panel-name">BewAir</div>
           <p className="auth-panel-tagline">
             Real-time air quality monitoring for healthier learning environments.
@@ -91,8 +91,9 @@ const Signup = () => {
 
             <div className="auth-row">
               <div className="auth-field">
-                <label className="auth-label">First name</label>
+                <label className="auth-label" htmlFor="signup-first-name">First name</label>
                 <input
+                  id="signup-first-name"
                   className="auth-input"
                   type="text"
                   placeholder="Juan"
@@ -101,8 +102,9 @@ const Signup = () => {
                 />
               </div>
               <div className="auth-field">
-                <label className="auth-label">Last name</label>
+                <label className="auth-label" htmlFor="signup-last-name">Last name</label>
                 <input
+                  id="signup-last-name"
                   className="auth-input"
                   type="text"
                   placeholder="Dela Cruz"
@@ -113,8 +115,9 @@ const Signup = () => {
             </div>
 
             <div className="auth-field">
-              <label className="auth-label">Email</label>
+              <label className="auth-label" htmlFor="signup-email">Email</label>
               <input
+                id="signup-email"
                 className="auth-input"
                 type="email"
                 placeholder="teacher@school.edu"
@@ -124,8 +127,9 @@ const Signup = () => {
             </div>
 
             <div className="auth-field">
-              <label className="auth-label">Teacher ID</label>
+              <label className="auth-label" htmlFor="signup-teacher-id">Teacher ID</label>
               <input
+                id="signup-teacher-id"
                 className="auth-input"
                 type="text"
                 placeholder="TCHR-2026-001"
@@ -136,8 +140,9 @@ const Signup = () => {
 
             <div className="auth-row">
               <div className="auth-field">
-                <label className="auth-label">Department</label>
+                <label className="auth-label" htmlFor="signup-department">Department</label>
                 <select
+                  id="signup-department"
                   className="auth-input"
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
@@ -149,8 +154,9 @@ const Signup = () => {
                 </select>
               </div>
               <div className="auth-field">
-                <label className="auth-label">Staff type</label>
+                <label className="auth-label" htmlFor="signup-staff-type">Staff type</label>
                 <select
+                  id="signup-staff-type"
                   className="auth-input"
                   value={staffType}
                   onChange={(e) => setStaffType(e.target.value)}
@@ -164,9 +170,10 @@ const Signup = () => {
             </div>
 
             <div className="auth-field">
-              <label className="auth-label">Password</label>
+              <label className="auth-label" htmlFor="signup-password">Password</label>
               <div className="auth-pw-wrap">
                 <input
+                  id="signup-password"
                   className="auth-input"
                   type={showPw ? 'text' : 'password'}
                   placeholder="Create a strong password"
@@ -178,6 +185,7 @@ const Signup = () => {
                   className="auth-pw-toggle"
                   onClick={() => setShowPw(v => !v)}
                   tabIndex={-1}
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
                 >
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -187,8 +195,9 @@ const Signup = () => {
             {password && <PasswordRequirements password={password} />}
 
             <div className="auth-field">
-              <label className="auth-label">Confirm password</label>
+              <label className="auth-label" htmlFor="signup-confirm-password">Confirm password</label>
               <input
+                id="signup-confirm-password"
                 className="auth-input"
                 type={showPw ? 'text' : 'password'}
                 placeholder="Confirm your password"

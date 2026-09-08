@@ -56,7 +56,7 @@ const ResetPassword = () => {
       {/* ── Left branded panel ── */}
       <div className="auth-panel-left">
         <div className="auth-brand-panel">
-          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" />
+          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" width={240} height={240} />
           <div className="auth-panel-name">BewAir</div>
           <p className="auth-panel-tagline">
             Real-time air quality monitoring for healthier learning environments.
@@ -76,8 +76,9 @@ const ResetPassword = () => {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="auth-field">
-              <label className="auth-label">Verification Code</label>
+              <label className="auth-label" htmlFor="reset-code">Verification Code</label>
               <input
+                id="reset-code"
                 className="auth-input"
                 type="text"
                 placeholder="000000"
@@ -98,9 +99,10 @@ const ResetPassword = () => {
             </p>
 
             <div className="auth-field">
-              <label className="auth-label">New Password</label>
+              <label className="auth-label" htmlFor="reset-new-password">New Password</label>
               <div className="auth-pw-wrap">
                 <input
+                  id="reset-new-password"
                   className="auth-input"
                   type={showPw ? 'text' : 'password'}
                   placeholder="Create a strong password"
@@ -112,6 +114,7 @@ const ResetPassword = () => {
                   className="auth-pw-toggle"
                   onClick={() => setShowPw(v => !v)}
                   tabIndex={-1}
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
                 >
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -121,8 +124,9 @@ const ResetPassword = () => {
             {newPassword && <PasswordRequirements password={newPassword} />}
 
             <div className="auth-field">
-              <label className="auth-label">Confirm New Password</label>
+              <label className="auth-label" htmlFor="reset-confirm-password">Confirm New Password</label>
               <input
+                id="reset-confirm-password"
                 className="auth-input"
                 type={showPw ? 'text' : 'password'}
                 placeholder="Confirm new password"

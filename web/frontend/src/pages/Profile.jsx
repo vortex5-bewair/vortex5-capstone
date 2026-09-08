@@ -277,24 +277,27 @@ const Profile = () => {
 
         {editing ? (
           <div className="profile-form">
-            <ProfileField icon={<User size={16} />} label="First name">
+            <ProfileField icon={<User size={16} />} label="First name" htmlFor="profile-first-name">
               <input
+                id="profile-first-name"
                 type="text"
                 value={form.firstName}
                 onChange={e => setForm({ ...form, firstName: e.target.value })}
                 className="profile-input"
               />
             </ProfileField>
-            <ProfileField icon={<User size={16} />} label="Last name">
+            <ProfileField icon={<User size={16} />} label="Last name" htmlFor="profile-last-name">
               <input
+                id="profile-last-name"
                 type="text"
                 value={form.lastName}
                 onChange={e => setForm({ ...form, lastName: e.target.value })}
                 className="profile-input"
               />
             </ProfileField>
-            <ProfileField icon={<Mail size={16} />} label="Email">
+            <ProfileField icon={<Mail size={16} />} label="Email" htmlFor="profile-email">
               <input
+                id="profile-email"
                 type="email"
                 value={form.email}
                 readOnly
@@ -302,8 +305,9 @@ const Profile = () => {
                 className="profile-input profile-input-locked"
               />
             </ProfileField>
-            <ProfileField icon={<Briefcase size={16} />} label="Staff type">
+            <ProfileField icon={<Briefcase size={16} />} label="Staff type" htmlFor="profile-staff-type">
               <select
+                id="profile-staff-type"
                 value={form.staffType}
                 onChange={e => setForm({ ...form, staffType: e.target.value })}
                 className="profile-input"
@@ -317,8 +321,9 @@ const Profile = () => {
                 )}
               </select>
             </ProfileField>
-            <ProfileField icon={<Building2 size={16} />} label="Department">
+            <ProfileField icon={<Building2 size={16} />} label="Department" htmlFor="profile-department">
               <select
+                id="profile-department"
                 value={form.department}
                 onChange={e => setForm({ ...form, department: e.target.value })}
                 className="profile-input"
@@ -383,9 +388,10 @@ const Profile = () => {
           <h2>Change Password</h2>
         </div>
         <form className="profile-form" onSubmit={handleChangePassword}>
-          <ProfileField icon={<Lock size={16} />} label="Current password">
+          <ProfileField icon={<Lock size={16} />} label="Current password" htmlFor="profile-current-password">
             <div className="pw-wrap">
               <input
+                id="profile-current-password"
                 type={pwdShow.current ? 'text' : 'password'}
                 value={pwdForm.currentPassword}
                 onChange={e => setPwdForm({ ...pwdForm, currentPassword: e.target.value })}
@@ -395,9 +401,10 @@ const Profile = () => {
               {pwdToggle('current')}
             </div>
           </ProfileField>
-          <ProfileField icon={<Lock size={16} />} label="New password">
+          <ProfileField icon={<Lock size={16} />} label="New password" htmlFor="profile-new-password">
             <div className="pw-wrap">
               <input
+                id="profile-new-password"
                 type={pwdShow.next ? 'text' : 'password'}
                 value={pwdForm.newPassword}
                 onChange={e => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
@@ -408,9 +415,10 @@ const Profile = () => {
               {pwdToggle('next')}
             </div>
           </ProfileField>
-          <ProfileField icon={<Lock size={16} />} label="Confirm new password">
+          <ProfileField icon={<Lock size={16} />} label="Confirm new password" htmlFor="profile-confirm-password">
             <div className="pw-wrap">
               <input
+                id="profile-confirm-password"
                 type={pwdShow.confirm ? 'text' : 'password'}
                 value={pwdForm.confirmPassword}
                 onChange={e => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
@@ -449,9 +457,9 @@ const ProfileRow = ({ icon, label, value }) => (
   </div>
 )
 
-const ProfileField = ({ icon, label, children }) => (
+const ProfileField = ({ icon, label, htmlFor, children }) => (
   <div className="profile-field">
-    <label className="profile-row-label">
+    <label className="profile-row-label" htmlFor={htmlFor}>
       <span className="profile-row-icon">{icon}</span>
       {label}
     </label>

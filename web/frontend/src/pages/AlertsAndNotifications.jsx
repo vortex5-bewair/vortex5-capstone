@@ -13,7 +13,15 @@ const FIELD_LABELS = {
   Formaldehyde: 'HCHO',
 }
 
-const fmt = (date) => new Date(date).toLocaleString()
+// One reused formatter instead of `new Date(...).toLocaleString()` per row —
+// that constructs a fresh Intl.DateTimeFormat internally every single call,
+// which is the more expensive part of the operation, and the history list
+// alone can be dozens of rows.
+const timeFormatter = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+})
+const fmt = (date) => timeFormatter.format(new Date(date))
 
 const AlertsAndNotifications = () => {
   const { user } = useAuthContext()
@@ -24,15 +32,21 @@ const AlertsAndNotifications = () => {
   const { data: currentData, loading: curLoading, error: curError } = useCachedFetch(
     user ? '/api/alerts/current' : null, user?.token, { pollInterval: 15000 }
   )
+  // The 7-day history payload is the larger of the two, and only the
+  // "History" tab ever shows it — fetching it unconditionally on mount used
+  // to pull and parse it even for someone who never leaves the default
+  // "Current" tab. `url` only becomes real once the tab is opened; the
+  // module-level cache in useCachedFetch means switching back doesn't
+  // re-fetch what's already been loaded.
   const { data: historyData, error: historyError } = useCachedFetch(
-    user ? '/api/alerts/history?days=7' : null, user?.token, { pollInterval: 15000 }
+    tab === 'history' && user ? '/api/alerts/history?days=7' : null, user?.token, { pollInterval: 15000 }
   )
 
   const current = currentData || []
   const history = historyData || []
 
   // Only block on the very first visit while we have nothing to show.
-  if (curLoading && !currentData) return <div className="dash-page"><p>Loading alerts...</p></div>
+  if (curLoading && !currentData) return <div className="dash-page dash-page-loading"><p>Loading alerts...</p></div>
 
   return (
     <div className="dash-page">
@@ -87,9 +101,9 @@ const AlertsAndNotifications = () => {
             )
           ) : (
             <div className="dash-alert-list">
-              {current.map((a, i) => (
+              {current.map((a) => (
                 <div
-                  key={i}
+                  key={`${a.deviceId}-${a.field}-${a.at}`}
                   className={`dash-alert dash-alert-${a.severity} dash-alert-clickable`}
                   onClick={() => navigate(`/device/${a.deviceId}`)}
                 >
@@ -132,9 +146,9 @@ const AlertsAndNotifications = () => {
             )
           ) : (
             <div className="alerts-history-list">
-              {history.map((a, i) => (
+              {history.map((a) => (
                 <div
-                  key={i}
+                  key={`${a.deviceId}-${a.field}-${a.at}`}
                   className="alerts-history-row"
                   onClick={() => navigate(`/device/${a.deviceId}`)}
                 >

@@ -60,7 +60,7 @@ const Navbar = () => {
     <div className="sidebar">
       <div className="sidebar-header">
         <div className="logo-container">
-          <img src={isDark ? bewAirLogoWhite : bewAirLogoBlack} alt="BewAir Logo" className="sidebar-logo" />
+          <img src={isDark ? bewAirLogoWhite : bewAirLogoBlack} alt="BewAir Logo" className="sidebar-logo" width={52} height={52} />
           <h2>BewAir</h2>
         </div>
       </div>

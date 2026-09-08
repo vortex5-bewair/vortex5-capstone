@@ -33,7 +33,7 @@ const ForgotPassword = () => {
       {/* ── Left branded panel ── */}
       <div className="auth-panel-left">
         <div className="auth-brand-panel">
-          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" />
+          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" width={240} height={240} />
           <div className="auth-panel-name">BewAir</div>
           <p className="auth-panel-tagline">
             Real-time air quality monitoring for healthier learning environments.
@@ -53,8 +53,9 @@ const ForgotPassword = () => {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="auth-field">
-              <label className="auth-label">Email</label>
+              <label className="auth-label" htmlFor="forgot-email">Email</label>
               <input
+                id="forgot-email"
                 className="auth-input"
                 type="email"
                 placeholder="teacher@school.edu"

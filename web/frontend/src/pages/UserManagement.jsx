@@ -300,6 +300,7 @@ const UserManagement = () => {
                             <input
                                 type="text"
                                 placeholder="Search users..."
+                                aria-label="Search users"
                                 value={search}
                                 onChange={e => {
                                 setSearch(e.target.value)
@@ -312,6 +313,7 @@ const UserManagement = () => {
                                 value={sortBy}
                                 onChange={e => setSortBy(e.target.value)}
                                 className="sort-select"
+                                aria-label="Sort users"
                             >
                                 <option value="alphabetical">A–Z</option>
                                 <option value="recent">Recent</option>
@@ -380,6 +382,7 @@ const UserManagement = () => {
                                                     }
                                                 }}
                                                 className="sort-select"
+                                                aria-label={`Role for ${u.firstName} ${u.lastName}`}
                                             >
                                                 <option value="staff">staff</option>
                                                 <option value="admin">admin</option>
@@ -749,6 +752,7 @@ const UserManagement = () => {
                                         <input
                                             type="text"
                                             placeholder="First name"
+                                            aria-label="First name"
                                             value={createForm.firstName}
                                             onChange={e => setCreateForm({ ...createForm, firstName: e.target.value })}
                                             className="search-input"
@@ -756,6 +760,7 @@ const UserManagement = () => {
                                         <input
                                             type="text"
                                             placeholder="Last name"
+                                            aria-label="Last name"
                                             value={createForm.lastName}
                                             onChange={e => setCreateForm({ ...createForm, lastName: e.target.value })}
                                             className="search-input"
@@ -763,6 +768,7 @@ const UserManagement = () => {
                                         <input
                                             type="email"
                                             placeholder="Email"
+                                            aria-label="Email"
                                             value={createForm.email}
                                             onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
                                             className="search-input"
@@ -771,6 +777,7 @@ const UserManagement = () => {
                                             <input
                                                 type={showCreatePw ? 'text' : 'password'}
                                                 placeholder="Password (min 8, mixed case, number, symbol)"
+                                                aria-label="Password"
                                                 value={createForm.password}
                                                 onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
                                                 className="search-input"
@@ -789,6 +796,7 @@ const UserManagement = () => {
                                             value={createForm.role}
                                             onChange={e => setCreateForm({ ...createForm, role: e.target.value })}
                                             className="sort-select"
+                                            aria-label="Role"
                                         >
                                             <option value="staff">Staff (teacher)</option>
                                             <option value="admin">Admin</option>

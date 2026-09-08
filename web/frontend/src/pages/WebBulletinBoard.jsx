@@ -260,8 +260,9 @@ const handleUpdate = async () => {
 
         <div className="modal-body">
           <div className="label-row">
-            <label>Title</label>
+            <label htmlFor="announcement-title">Title</label>
             <input
+              id="announcement-title"
               type="text"
               name="title"
               value={formData.title}
@@ -272,8 +273,9 @@ const handleUpdate = async () => {
           </div>
 
           <div className="label-row">
-            <label>Description</label>
+            <label htmlFor="announcement-description">Description</label>
             <textarea
+              id="announcement-description"
               name="description"
               value={formData.description}
               onChange={handleChange}
@@ -283,8 +285,9 @@ const handleUpdate = async () => {
           </div>
 
           <div className="label-row">
-            <label>Category</label>
+            <label htmlFor="announcement-category">Category</label>
             <select
+              id="announcement-category"
               name="category"
               value={formData.category}
               onChange={handleChange}
@@ -346,8 +349,9 @@ const handleUpdate = async () => {
 
         <div className="modal-body">
           <div className="label-row">
-            <label>Title</label>
+            <label htmlFor="edit-announcement-title">Title</label>
             <input
+              id="edit-announcement-title"
               type="text"
               name="title"
               value={editData.title}
@@ -358,8 +362,9 @@ const handleUpdate = async () => {
           </div>
 
           <div className="label-row">
-            <label>Description</label>
+            <label htmlFor="edit-announcement-description">Description</label>
             <textarea
+              id="edit-announcement-description"
               name="description"
               value={editData.description}
               onChange={handleEditChange}
@@ -369,8 +374,9 @@ const handleUpdate = async () => {
           </div>
 
           <div className="label-row">
-            <label>Category</label>
+            <label htmlFor="edit-announcement-category">Category</label>
             <select
+              id="edit-announcement-category"
               name="category"
               value={editData.category}
               onChange={handleEditChange}
@@ -453,6 +459,7 @@ const handleUpdate = async () => {
                 <button
                   className="icon-btn edit-btn"
                   onClick={() => handleEdit(a)}
+                  aria-label={`Edit "${a.title}"`}
                 >
                   <Pencil size={18} />
                 </button>
@@ -460,6 +467,7 @@ const handleUpdate = async () => {
                 <button
                   className="icon-btn danger-btn"
                   onClick={() => handleDelete(a._id)}
+                  aria-label={`Delete "${a.title}"`}
                 >
                   <Trash2 size={18} />
                 </button>
@@ -510,8 +518,9 @@ const handleUpdate = async () => {
 
         <div className="modal-body">
           <div className="label-row">
-            <label>Choose File *</label>
+            <label htmlFor="announcement-video-file">Choose File *</label>
             <input
+              id="announcement-video-file"
               type="file"
               accept="video/*"
               onChange={handleFileChange}

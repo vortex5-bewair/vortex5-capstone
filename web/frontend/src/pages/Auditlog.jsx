@@ -101,6 +101,7 @@ const AuditLogs = () => {
         <input
           type="text"
           placeholder="Search module, action, or user..."
+          aria-label="Search module, action, or user"
           value={search}
           onChange={e => {
             setSearch(e.target.value)
@@ -110,8 +111,9 @@ const AuditLogs = () => {
         />
 
         <div>
-          <label>From:</label>
+          <label htmlFor="auditlog-from">From:</label>
           <input
+            id="auditlog-from"
             type="date"
             value={fromDate}
             max={toDate || undefined}
@@ -124,8 +126,9 @@ const AuditLogs = () => {
         </div>
 
         <div>
-          <label>To:</label>
+          <label htmlFor="auditlog-to">To:</label>
           <input
+            id="auditlog-to"
             type="date"
             value={toDate}
             min={fromDate || undefined}
@@ -138,8 +141,9 @@ const AuditLogs = () => {
         </div>
 
         <div>
-          <label>Module:</label>
+          <label htmlFor="auditlog-module">Module:</label>
           <select
+            id="auditlog-module"
             value={sortModule}
             onChange={e => {
               setSortModule(e.target.value)
@@ -157,8 +161,9 @@ const AuditLogs = () => {
         </div>
 
         <div>
-          <label>Date:</label>
+          <label htmlFor="auditlog-date">Date:</label>
           <select
+            id="auditlog-date"
             value={sortDate}
             onChange={e => {
               setSortDate(e.target.value)

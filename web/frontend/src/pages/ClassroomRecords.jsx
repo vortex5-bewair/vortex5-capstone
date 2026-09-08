@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { useTheme } from '../hooks/useTheme'
 import { School, ArrowLeft, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
-import { CATEGORY_COLORS, aqiCategory } from '../utils/airQualityGuidance'
+import { aqiCategory, textSafeCategoryColor } from '../utils/airQualityGuidance'
 
 const STATUS_LABELS = {
   active:    { label: 'Active',   color: '#16a34a', bg: '#dcfce7' },
@@ -13,6 +14,7 @@ const STATUS_LABELS = {
 const ClassroomRecords = () => {
   const { user } = useAuthContext()
   const navigate = useNavigate()
+  const { isDark } = useTheme()
   const isAdmin = user && user.role === 'admin'
 
   const [devices, setDevices] = useState([])
@@ -161,7 +163,7 @@ const ClassroomRecords = () => {
             <div className="dash-device-grid">
               {roomData.devices.map(d => {
                 const status = STATUS_LABELS[d.status] || STATUS_LABELS.offline
-                const aqiColor = d.category ? CATEGORY_COLORS[d.category] : '#94a3b8'
+                const aqiColor = d.category ? textSafeCategoryColor(d.category, isDark) : 'var(--color-text-tertiary)'
                 return (
                   <div
                     key={d.deviceId}
@@ -219,7 +221,7 @@ const ClassroomRecords = () => {
         <div className="room-grid">
           {rooms.map(r => {
             const category = r.avgAqi != null ? aqiCategory(r.avgAqi) : null
-            const accent = category ? CATEGORY_COLORS[category] : '#94a3b8'
+            const accent = category ? textSafeCategoryColor(category, isDark) : 'var(--color-text-tertiary)'
             const isManaged = !!r.roomId
             return (
               <div
@@ -278,6 +280,7 @@ const ClassroomRecords = () => {
                 className="profile-input"
                 style={{ width: '100%' }}
                 placeholder="Room name (e.g. Room 101)"
+                aria-label="Room name"
                 value={roomName}
                 autoFocus
                 onChange={(e) => setRoomName(e.target.value)}

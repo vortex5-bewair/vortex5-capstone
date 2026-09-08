@@ -1,29 +1,37 @@
+import { lazy, Suspense } from 'react'
 import {BrowserRouter, Routes, Route, Navigate, useLocation} from 'react-router-dom'
 import { useAuthContext } from './hooks/useAuthContext';
 
-// Pages & components
+// The app shell and the three entry points stay eager — they are the first
+// paint for a logged-out visitor (LandingPage/Login) or a logged-in one (Home),
+// so deferring them would only add a round trip before anything renders.
 import Home from './pages/Home.jsx'
 import LandingPage from './pages/LandingPage.jsx';
 import Login from './pages/Login.jsx';
-import Signup from './pages/Signup.jsx';
-import VerifySignup from './pages/VerifySignup.jsx';
-import ForgotPassword from './pages/ForgotPassword.jsx';
-import ResetPassword from './pages/ResetPassword.jsx';
-import Analytics from './pages/Analytics.jsx';
-import Auditlog from './pages/Auditlog.jsx'
 import Navbar from './components/Navbar.jsx'
 import Header from './components/Header.jsx';
-import UserManagement from './pages/UserManagement.jsx';
-import DeviceManagement from './pages/DeviceManagement.jsx';
-import ClassroomRecords from './pages/ClassroomRecords.jsx';
-import AlertsAndNotifications from './pages/AlertsAndNotifications.jsx';
-import ConnectSensor from './pages/ConnectSensor.jsx';
-import Profile from './pages/Profile.jsx';
-import BulletinBoard from './pages/BulletinBoard.jsx';
-import AnimationViewer from './pages/AnimationViewer.jsx';
-import WebBulletinBoard from './pages/WebBulletinBoard.jsx';
-import Thresholds from './pages/Thresholds.jsx';
-import DeviceDetail from './pages/DeviceDetail.jsx';
+
+// Everything else is split out of the main bundle. Analytics matters most: it
+// alone owns ECharts, the MUI DataGrid, the date pickers and jsPDF, none of
+// which any other route touches — before this, every visitor to /login paid to
+// download and parse all of it.
+const Signup = lazy(() => import('./pages/Signup.jsx'));
+const VerifySignup = lazy(() => import('./pages/VerifySignup.jsx'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
+const Analytics = lazy(() => import('./pages/Analytics.jsx'));
+const Auditlog = lazy(() => import('./pages/Auditlog.jsx'));
+const UserManagement = lazy(() => import('./pages/UserManagement.jsx'));
+const DeviceManagement = lazy(() => import('./pages/DeviceManagement.jsx'));
+const ClassroomRecords = lazy(() => import('./pages/ClassroomRecords.jsx'));
+const AlertsAndNotifications = lazy(() => import('./pages/AlertsAndNotifications.jsx'));
+const ConnectSensor = lazy(() => import('./pages/ConnectSensor.jsx'));
+const Profile = lazy(() => import('./pages/Profile.jsx'));
+const BulletinBoard = lazy(() => import('./pages/BulletinBoard.jsx'));
+const AnimationViewer = lazy(() => import('./pages/AnimationViewer.jsx'));
+const WebBulletinBoard = lazy(() => import('./pages/WebBulletinBoard.jsx'));
+const Thresholds = lazy(() => import('./pages/Thresholds.jsx'));
+const DeviceDetail = lazy(() => import('./pages/DeviceDetail.jsx'));
 
 // Create a separate component for the routes (needs to be inside BrowserRouter)
 function AppRoutes() {
@@ -58,6 +66,9 @@ function AppRoutes() {
         {/* Only show Header on non-public pages */}
         {!isPublicPage && <Header />}
         <div className='pages'>
+          {/* Reserves the route area while a split chunk loads, so the shell
+              does not collapse and re-expand (which would register as CLS). */}
+          <Suspense fallback={<div className="route-fallback" />}>
           <Routes>
             <Route
               path="/"
@@ -161,6 +172,7 @@ function AppRoutes() {
               element={!user ? <ResetPassword /> : <Navigate to="/" />}
             />
           </Routes>
+          </Suspense>
         </div>
       </div>
     </>

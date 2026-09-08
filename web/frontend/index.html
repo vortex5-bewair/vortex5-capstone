@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AQI System</title>
 
+    <!-- Fonts.
+         These were previously pulled in by an @import at the top of index.css,
+         which is the slowest possible placement: the browser had to download
+         our whole stylesheet before it could even discover the font request,
+         then fetch the Google stylesheet, then the font files — three serial
+         round trips to an origin nothing had warmed up. Declaring them here
+         lets the font CSS download in parallel with ours, and the preconnects
+         open the connections up front. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&family=Poppins:wght@600;700;800&display=swap"
+    />
 
     <!-- Global CSS -->
     <link rel="stylesheet" href="./src/index.css" />

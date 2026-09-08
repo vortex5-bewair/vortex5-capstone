@@ -1,5 +1,6 @@
 import { ShieldCheck, Info } from 'lucide-react'
-import { aqiAdvisory, flaggedComponents, airQualitySource } from '../utils/airQualityGuidance'
+import { aqiAdvisory, flaggedComponents, airQualitySource, textSafeCategoryColor, readableInsightColor } from '../utils/airQualityGuidance'
+import { useTheme } from '../hooks/useTheme'
 
 // Shows recommended actions for the current reading, with every number and
 // every line of advice coming from the canonical band table the backend serves
@@ -7,9 +8,16 @@ import { aqiAdvisory, flaggedComponents, airQualitySource } from '../utils/airQu
 //  - overall AQI advisory for the DENR category
 //  - per-component actions for any component currently outside its range
 const RecommendedActions = ({ reading }) => {
+  const { isDark } = useTheme()
   const aqi = reading?.Aqi
   const advisory = aqiAdvisory(aqi)
   const flagged = flaggedComponents(reading)
+  // advisory.color / c.color below are the served, chip-tuned colors — fine
+  // for the decorative left-border/dot, but three of the six AQI categories
+  // (light mode) and several per-component band colors (dark mode) fail
+  // WCAG AA as text on this card's background. See textSafeCategoryColor /
+  // readableInsightColor in airQualityGuidance.js.
+  const advisoryTextColor = advisory ? textSafeCategoryColor(advisory.category, isDark) : null
 
   if (!advisory) {
     return (
@@ -28,7 +36,7 @@ const RecommendedActions = ({ reading }) => {
 
       {/* Overall AQI advisory */}
       <div className="rec-aqi" style={{ borderLeftColor: advisory.color }}>
-        <div className="rec-aqi-cat" style={{ color: advisory.color }}>
+        <div className="rec-aqi-cat" style={{ color: advisoryTextColor }}>
           {advisory.category}
         </div>
         <ul className="rec-list">
@@ -45,7 +53,7 @@ const RecommendedActions = ({ reading }) => {
               <span className="rec-comp-dot" style={{ background: c.color }} />
               <div className="rec-comp-text">
                 <div className="rec-comp-name">
-                  {c.label} <span className="rec-comp-level" style={{ color: c.color }}>· {c.level}</span>
+                  {c.label} <span className="rec-comp-level" style={{ color: readableInsightColor(c.color, isDark) }}>· {c.level}</span>
                   {/* Simulated by the sensor from its VOC element, not measured. */}
                   {c.derived && <span className="rec-comp-derived"> · derived value</span>}
                 </div>

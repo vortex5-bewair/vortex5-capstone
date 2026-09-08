@@ -37,7 +37,7 @@ const VerifySignup = () => {
       {/* ── Left branded panel ── */}
       <div className="auth-panel-left">
         <div className="auth-brand-panel">
-          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" />
+          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" width={240} height={240} />
           <div className="auth-panel-name">BewAir</div>
           <p className="auth-panel-tagline">
             Real-time air quality monitoring for healthier learning environments.
@@ -57,8 +57,9 @@ const VerifySignup = () => {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="auth-field">
-              <label className="auth-label">Verification Code</label>
+              <label className="auth-label" htmlFor="verify-code">Verification Code</label>
               <input
+                id="verify-code"
                 className="auth-input"
                 type="text"
                 placeholder="000000"
