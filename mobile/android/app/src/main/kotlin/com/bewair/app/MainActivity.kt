@@ -1,4 +1,4 @@
-package com.example.vortex5_application_2
+package com.bewair.app
 
 import io.flutter.embedding.android.FlutterActivity
 
