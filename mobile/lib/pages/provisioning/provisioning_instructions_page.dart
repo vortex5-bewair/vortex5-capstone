@@ -71,22 +71,22 @@ class _ProvisioningInstructionsPageState
         foregroundColor: Colors.white,
         title: const Text('Add Device'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
+      body: const Padding(
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Connect to your sensor',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               "Power on your BewAir sensor. On its first boot it broadcasts a "
               "Wi-Fi network you can join from your phone.",
               style: TextStyle(color: Colors.black54, height: 1.4),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             _Step(
               number: '1',
               title: 'Open Wi-Fi settings',
@@ -107,8 +107,8 @@ class _ProvisioningInstructionsPageState
                   'This screen will detect the sensor automatically and move '
                   'on to the next step.',
             ),
-            const Spacer(),
-            const Center(
+            Spacer(),
+            Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -125,7 +125,7 @@ class _ProvisioningInstructionsPageState
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
           ],
         ),
       ),

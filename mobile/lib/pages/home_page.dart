@@ -674,14 +674,14 @@ class _SensorPanel extends StatelessWidget {
         ],
 
         // Component list — tap a row for an insight
-        Align(
+        const Align(
           alignment: Alignment.centerLeft,
           child: Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            padding: EdgeInsets.only(left: 4, bottom: 8),
             child: Text(
               'Air Components',
               style: TextStyle(
-                color: const Color(0xFF0F172A),
+                color: Color(0xFF0F172A),
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
               ),
@@ -699,7 +699,7 @@ class _SensorPanel extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,
-      child: Container(
+      child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFE2E8F0)),
@@ -873,9 +873,9 @@ class _SensorPanel extends StatelessWidget {
             // so nobody treats them as instrument readings.
             if (_isDerivedComponent(c.key)) ...[
               const SizedBox(height: 14),
-              Row(
+              const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Icon(Icons.info_outline, size: 16, color: Color(0xFF94A3B8)),
                   SizedBox(width: 8),
                   Expanded(
