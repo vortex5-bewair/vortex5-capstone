@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useLogout } from "../hooks/useLogout"
 import { useTheme } from "../hooks/useTheme"
-import { useState, useEffect  } from 'react'
+import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
 import {
@@ -49,12 +49,19 @@ const Navbar = () => {
   const isConfigActive = location.pathname.startsWith('/configuration/Thresholds')
 
   // Toggle state for the Configuration submenu.
-  // Auto-opens when the user is currently on a config sub-route.
+  // Auto-opens when the user navigates onto a config sub-route, but doesn't
+  // auto-close when they navigate away — the user may have opened it
+  // manually and still expect it open. Adjusted during render rather than in
+  // an effect (React's documented pattern for "derive state from a changing
+  // prop, one directionally"): tracking the previous isConfigActive lets this
+  // catch the false->true transition without an effect + extra post-paint
+  // render, and without re-forcing it open on every render while already true.
   const [configOpen, setConfigOpen] = useState(isConfigActive)
-
-  useEffect(() => {
+  const [prevConfigActive, setPrevConfigActive] = useState(isConfigActive)
+  if (isConfigActive !== prevConfigActive) {
+    setPrevConfigActive(isConfigActive)
     if (isConfigActive) setConfigOpen(true)
-  }, [isConfigActive])
+  }
 
   return (
     <div className="sidebar">

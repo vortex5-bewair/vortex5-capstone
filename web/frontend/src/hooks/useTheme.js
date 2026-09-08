@@ -6,7 +6,7 @@ function readInitialTheme() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved === 'light' || saved === 'dark') return saved
-  } catch (_) { /* no-op */ }
+  } catch { /* no-op */ }
   // Default to system preference; fall back to light.
   if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
     return 'dark'
@@ -32,7 +32,7 @@ applyTheme(currentTheme)
 function setGlobalTheme(next) {
   if (next !== 'light' && next !== 'dark') return
   currentTheme = next
-  try { localStorage.setItem(STORAGE_KEY, next) } catch (_) { /* no-op */ }
+  try { localStorage.setItem(STORAGE_KEY, next) } catch { /* no-op */ }
   applyTheme(next)
   listeners.forEach(fn => fn(next))
 }
@@ -40,14 +40,22 @@ function setGlobalTheme(next) {
 export function useTheme() {
   const [theme, setLocal] = useState(currentTheme)
 
+  // Corrects any staleness between this component's initial render and its
+  // mount effect running below (e.g. another already-mounted component's
+  // toggle firing in between) — done here, during render, rather than as a
+  // setState call inside the effect: React's own bail-out for a render-phase
+  // setState re-renders once immediately without committing the stale value,
+  // instead of committing-then-effect-then-correcting a frame later.
+  if (theme !== currentTheme) {
+    setLocal(currentTheme)
+  }
+
   useEffect(() => {
     // Subscribe so this component re-renders whenever the global theme changes.
     const fn = (t) => setLocal(t)
     listeners.add(fn)
-    // Sync in case the theme changed between initial render and this effect.
-    if (currentTheme !== theme) setLocal(currentTheme)
     return () => { listeners.delete(fn) }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const setTheme = useCallback((next) => setGlobalTheme(next), [])
   const toggle = useCallback(() => setGlobalTheme(currentTheme === 'dark' ? 'light' : 'dark'), [])
