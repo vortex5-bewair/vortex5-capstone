@@ -200,10 +200,10 @@ class _ProvisioningScanPageState extends State<ProvisioningScanPage> {
             const SizedBox(height: 20),
 
             if (_permissionDenied)
-              _InfoBox(
-                color: const Color(0xFFFFF7ED),
-                border: const Color(0xFFFDBA74),
-                child: const Text(
+              const _InfoBox(
+                color: Color(0xFFFFF7ED),
+                border: Color(0xFFFDBA74),
+                child: Text(
                   'Location / nearby-devices permission is needed to scan for sensors. '
                   'Please enable it in app settings, then tap Rescan.',
                   style: TextStyle(color: Color(0xFF92400E)),
@@ -231,18 +231,18 @@ class _ProvisioningScanPageState extends State<ProvisioningScanPage> {
                       ),
                     )
                   : _found.isEmpty
-                      ? Center(
+                      ? const Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.wifi_find,
+                              Icon(Icons.wifi_find,
                                   size: 56, color: Color(0xFFCBD5E1)),
-                              const SizedBox(height: 12),
-                              const Text('No sensors found',
+                              SizedBox(height: 12),
+                              Text('No sensors found',
                                   style: TextStyle(
                                       fontSize: 16, fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 6),
-                              const Text(
+                              SizedBox(height: 6),
+                              Text(
                                 'Make sure the sensor is powered on and in setup mode.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: Colors.black54),

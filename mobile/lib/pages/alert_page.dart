@@ -149,7 +149,7 @@ class _AlertPageState extends State<AlertPage> {
 
   // ── Filter tabs ──────────────────────────────────────────────────────────
   Widget _filterBar() {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: const Color(0xFFE5E7EB),
         borderRadius: BorderRadius.circular(16),

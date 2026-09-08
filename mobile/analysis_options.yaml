@@ -24,5 +24,16 @@ linter:
     # avoid_print: false  # Uncomment to disable the `avoid_print` rule
     # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
 
+    # Performance: const widgets are built once and skipped on rebuild; the
+    # colored/decorated/sized-box swaps are cheaper than a general Container.
+    - prefer_const_constructors
+    - prefer_const_constructors_in_immutables
+    - prefer_const_literals_to_create_immutables
+    - prefer_const_declarations
+    - avoid_unnecessary_containers
+    - sized_box_for_whitespace
+    - use_colored_box
+    - use_decorated_box
+
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

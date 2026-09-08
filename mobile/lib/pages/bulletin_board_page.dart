@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -51,10 +52,27 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
   bool _loading = true;
   String? _error;
 
+  // Debounce the search box: each keystroke otherwise re-filters every post
+  // and rebuilds the whole list.
+  Timer? _searchDebounce;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadPosts());
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String v) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) setState(() => _search = v);
+    });
   }
 
   Map<String, String> _headers() {
@@ -285,7 +303,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
 
   Widget _searchField() {
     return TextField(
-      onChanged: (v) => setState(() => _search = v),
+      onChanged: _onSearchChanged,
       style: GoogleFonts.inter(fontSize: 14),
       decoration: InputDecoration(
         hintText: 'Search announcements',

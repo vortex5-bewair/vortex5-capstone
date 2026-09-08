@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vortex5_application_2/app_state.dart';
@@ -39,6 +40,12 @@ class _HomePageState extends State<HomePage> {
   /// 'all' = show every sensor, otherwise the room name to focus on.
   String _selectedRoom = 'all';
 
+  // Signature of the last device list we rebuilt for. Live (2s) reading ticks
+  // now flow through AppState.liveReadings and are painted by a
+  // ValueListenableBuilder further down, so a full-page setState is only
+  // needed when the device list / rooms / error actually change (~10s refresh).
+  String _sensorSig = '';
+
   @override
   void initState() {
     super.initState();
@@ -60,8 +67,20 @@ class _HomePageState extends State<HomePage> {
     return all.where((s) => s.room.trim() == _selectedRoom).toList();
   }
 
+  String _computeSensorSig() {
+    final b = StringBuffer(widget.appState.refreshError ?? '');
+    for (final s in widget.appState.sensors) {
+      b.write('|${s.id}:${s.name}:${s.room}:${s.status}:${s.enabled}');
+    }
+    return b.toString();
+  }
+
   void _handleStateChange() {
     if (!mounted) return;
+    final sig = _computeSensorSig();
+    if (sig == _sensorSig) return; // nothing structural changed — skip rebuild
+    _sensorSig = sig;
+
     // Keep the page index within bounds if the (filtered) device list changed.
     final count = _filtered.length;
     if (count > 0 && _index >= count) {
@@ -156,30 +175,36 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final sensors = _filtered;
 
-    // Tint the background by the currently shown sensor's air quality.
-    final cur = _current;
-    final curReading =
-        (cur != null && cur.enabled) ? widget.appState.liveReadingFor(cur.id) : null;
-    final tint = curReading != null
-        ? aqiColorFor(curReading.aqiInstant)
-        : const Color(0xFF94A3B8);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F8F5),
       appBar: _appBar(),
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              tint.withValues(alpha: 0.16),
-              const Color(0xFFF4F8F5),
-            ],
-            stops: const [0.0, 0.45],
-          ),
-        ),
+      // Only the gradient tint depends on the 2s live reading, so just it
+      // listens — the rest of the page is built once per structural change.
+      body: ValueListenableBuilder<Map<String, LiveReading>>(
+        valueListenable: widget.appState.liveReadings,
+        builder: (context, live, child) {
+          final cur = _current;
+          final curReading =
+              (cur != null && cur.enabled) ? live[cur.id] : null;
+          final tint = curReading != null
+              ? aqiColorFor(curReading.aqiInstant)
+              : const Color(0xFF94A3B8);
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  tint.withValues(alpha: 0.16),
+                  const Color(0xFFF4F8F5),
+                ],
+                stops: const [0.0, 0.45],
+              ),
+            ),
+            child: child,
+          );
+        },
         child: SafeArea(
           top: false,
           bottom: false,
@@ -205,6 +230,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Built once, not on every rebuild — GoogleFonts.poppins() allocates a
+  // TextStyle each call and _appBar() runs on every structural rebuild.
+  static final TextStyle _brandStyle = GoogleFonts.poppins(
+    color: Colors.white,
+    fontWeight: FontWeight.w800,
+    fontSize: 22,
+    letterSpacing: 1.4,
+  );
+
   // ======== AppBar (matches the Connect tab style) ========
   PreferredSizeWidget _appBar() {
     const blue = Color(0xFF1E5BFF);
@@ -220,15 +254,7 @@ class _HomePageState extends State<HomePage> {
             fit: BoxFit.contain,
           ),
           const SizedBox(width: 10),
-          Text(
-            'BewAir',
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 22,
-              letterSpacing: 1.4,
-            ),
-          ),
+          Text('BewAir', style: _brandStyle),
         ],
       ),
       actions: [
@@ -392,24 +418,34 @@ class _HomePageState extends State<HomePage> {
             },
             itemBuilder: (ctx, i) {
               final sensor = sensors[i];
-              final rawReading = widget.appState.liveReadingFor(sensor.id);
               final resetAt = _resetAtByDevice[sensor.id];
-              // A reading from before the last "Forget Wi-Fi" isn't
-              // trustworthy — treat it as if it doesn't exist.
-              final effectiveReading =
-                  (resetAt != null && rawReading != null && !rawReading.receivedAt.isAfter(resetAt))
-                      ? null
-                      : rawReading;
+              final threshold = widget.appState.aqiThreshold;
               return RefreshIndicator(
                 onRefresh: _refresh,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                   children: [
-                    _SensorPanel(
-                      sensor: sensor,
-                      reading: effectiveReading,
-                      threshold: widget.appState.aqiThreshold,
+                    // Only the panel's numbers depend on the 2s live reading,
+                    // so only it rebuilds on a tick — the PageView, nav bar and
+                    // pull-to-refresh wrapper stay put.
+                    ValueListenableBuilder<Map<String, LiveReading>>(
+                      valueListenable: widget.appState.liveReadings,
+                      builder: (context, live, _) {
+                        final rawReading = live[sensor.id];
+                        // A reading from before the last "Forget Wi-Fi" isn't
+                        // trustworthy — treat it as if it doesn't exist.
+                        final effectiveReading = (resetAt != null &&
+                                rawReading != null &&
+                                !rawReading.receivedAt.isAfter(resetAt))
+                            ? null
+                            : rawReading;
+                        return _SensorPanel(
+                          sensor: sensor,
+                          reading: effectiveReading,
+                          threshold: threshold,
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -537,7 +573,11 @@ class _SensorPanel extends StatelessWidget {
                 ),
               Positioned.fill(
                 child: CustomPaint(
-                  painter: _GaugePainter(aqi: aqi, hasData: hasReading),
+                  painter: _GaugePainter(
+                    aqi: aqi,
+                    hasData: hasReading,
+                    bandColors: aqiBandColorsNow(),
+                  ),
                 ),
               ),
               // centered value
@@ -634,14 +674,14 @@ class _SensorPanel extends StatelessWidget {
         ],
 
         // Component list — tap a row for an insight
-        Align(
+        const Align(
           alignment: Alignment.centerLeft,
           child: Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            padding: EdgeInsets.only(left: 4, bottom: 8),
             child: Text(
               'Air Components',
               style: TextStyle(
-                color: const Color(0xFF0F172A),
+                color: Color(0xFF0F172A),
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
               ),
@@ -659,7 +699,7 @@ class _SensorPanel extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,
-      child: Container(
+      child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFE2E8F0)),
@@ -833,9 +873,9 @@ class _SensorPanel extends StatelessWidget {
             // so nobody treats them as instrument readings.
             if (_isDerivedComponent(c.key)) ...[
               const SizedBox(height: 14),
-              Row(
+              const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Icon(Icons.info_outline, size: 16, color: Color(0xFF94A3B8)),
                   SizedBox(width: 8),
                   Expanded(
@@ -1152,15 +1192,18 @@ class _GaugePainter extends CustomPainter {
   final int aqi;
   final bool hasData;
 
-  _GaugePainter({required this.aqi, required this.hasData});
+  // Resolved once by the caller (via aqiBandColorsNow()) and passed in, so
+  // paint() doesn't allocate a fresh List<Color> on every repaint.
+  final List<Color> _bandColors;
+
+  _GaugePainter({
+    required this.aqi,
+    required this.hasData,
+    required List<Color> bandColors,
+  }) : _bandColors = bandColors;
 
   // Equal-width category segments (each gets the same slice of the arc).
   static const _bounds = <double>[0, 50, 100, 150, 200, 300, 500];
-
-  // Resolved per repaint rather than held as a const, so the gauge picks up the
-  // served band colours once the canonical table loads instead of being frozen
-  // to the bundled palette at class-load time.
-  List<Color> get _bandColors => aqiBandColorsNow();
 
   int get _segCount => _bandColors.length;
 
@@ -1236,5 +1279,7 @@ class _GaugePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _GaugePainter old) =>
-      old.aqi != aqi || old.hasData != hasData;
+      old.aqi != aqi ||
+      old.hasData != hasData ||
+      !listEquals(old._bandColors, _bandColors);
 }

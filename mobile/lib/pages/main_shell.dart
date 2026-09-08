@@ -14,29 +14,52 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final AppState _appState = AppState();
   bool _ready = false;
 
+  // Index 0 (Home) is the only tab that shows live sensor numbers, so the 2s
+  // poll is retained only while it's selected. Tracked so we never double
+  // count on rebuilds.
+  bool _liveRetained = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _bootstrap();
   }
 
   Future<void> _bootstrap() async {
-    await _appState.initialize();
+    await _appState.initialize(); // starts the 10s timer itself
     if (!mounted) return;
-    _appState.startAutoRefresh();
-    _appState.startLiveRefresh();
+    _syncLiveRetain();
     setState(() => _ready = true);
+  }
+
+  // Only the Home tab needs the fast poll; retain/release as it comes and goes.
+  void _syncLiveRetain() {
+    final wantLive = _currentIndex == 0;
+    if (wantLive && !_liveRetained) {
+      _appState.retainLive();
+      _liveRetained = true;
+    } else if (!wantLive && _liveRetained) {
+      _appState.releaseLive();
+      _liveRetained = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Pausing all polling + rebuilds while backgrounded is the energy fix.
+    _appState.setForeground(state == AppLifecycleState.resumed);
   }
 
   @override
   void dispose() {
-    _appState.stopAutoRefresh();
-    _appState.stopLiveRefresh();
+    WidgetsBinding.instance.removeObserver(this);
+    _appState.dispose();
     super.dispose();
   }
 
@@ -101,7 +124,10 @@ class _MainShellState extends State<MainShell> {
         // what actually drives unreadAlertCount — there's no bulk mark-all
         // wired to visiting this tab, intentionally, so the unread
         // highlighting inside AlertPage stays visible when you open it.
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          _syncLiveRetain();
+        },
         items: items,
       ),
     );
