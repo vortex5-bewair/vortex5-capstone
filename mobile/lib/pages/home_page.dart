@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vortex5_application_2/app_state.dart';
@@ -187,7 +186,7 @@ class _HomePageState extends State<HomePage> {
           final curReading =
               (cur != null && cur.enabled) ? live[cur.id] : null;
           final tint = curReading != null
-              ? aqiColorFor(curReading.aqiInstant)
+              ? aqiColorFor(curReading.aqiGauge)
               : const Color(0xFF94A3B8);
           return AnimatedContainer(
             duration: const Duration(milliseconds: 400),
@@ -531,8 +530,9 @@ class _SensorPanel extends StatelessWidget {
     // as if they were still live.
     final hasReading =
         reading != null && !isOff && sensor.status != SensorStatus.offline;
-    final aqi = reading?.aqiInstant ?? 0;
-    final color = !hasReading ? const Color(0xFF94A3B8) : aqiColorFor(aqi);
+    final aqi = reading?.aqiInstant ?? 0;          // exact — the big number
+    final aqiGauge = reading?.aqiGauge ?? 0;       // snapped — dial + colour band
+    final color = !hasReading ? const Color(0xFF94A3B8) : aqiColorFor(aqiGauge);
 
     final components = <_Component>[
       _Component('PM2.5', 'µg/m³', reading?.pm25, 1, Icons.blur_on, 'pm25'),
@@ -576,7 +576,7 @@ class _SensorPanel extends StatelessWidget {
               Positioned.fill(
                 child: CustomPaint(
                   painter: _GaugePainter(
-                    aqi: aqi,
+                    aqi: aqiGauge,
                     hasData: hasReading,
                     bandColors: aqiBandColorsNow(),
                   ),
@@ -669,9 +669,11 @@ class _SensorPanel extends StatelessWidget {
         ],
         const SizedBox(height: 20),
 
-        // Recommended actions for the current AQI (EPA AirNow guidance)
+        // Recommended actions for the current AQI (EPA AirNow guidance).
+        // Fed the snapped value so the guidance + its AnimatedSize only change
+        // when the AQI actually crosses into a different band.
         if (hasReading) ...[
-          _RecommendedActionsCard(aqi: aqi, color: color),
+          _RecommendedActionsCard(aqi: aqiGauge, color: color),
           const SizedBox(height: 20),
         ],
 
@@ -1297,7 +1299,8 @@ class _GaugePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _GaugePainter old) =>
-      old.aqi != aqi ||
-      old.hasData != hasData ||
-      !listEquals(old._bandColors, _bandColors);
+      // `aqi` here is the snapped gauge value, so a raw ±1 wiggle no longer
+      // repaints. The band-colour list only changes if the served table
+      // reloads (a rare, whole-app event) — not worth a per-repaint compare.
+      old.aqi != aqi || old.hasData != hasData;
 }

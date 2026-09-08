@@ -86,8 +86,19 @@ class AppState extends ChangeNotifier {
   int _autoMisses = 0;
   int _autoSkip = 0;
 
-  static const Duration _liveInterval = Duration(seconds: 2);
+  // Bounds how often the live map is published to the UI, independent of the
+  // poll rate: a sensor whose printed digits flicker every poll would
+  // otherwise still rebuild the Home panel every tick.
+  DateTime _lastLivePublish = DateTime.fromMillisecondsSinceEpoch(0);
+  Map<String, LiveReading>? _stagedLive;
+
+  // When the app last came to the foreground — used to skip a redundant
+  // catch-up fetch right after boot (initialize() already did one).
+  DateTime _foregroundSince = DateTime.now();
+
+  static const Duration _liveInterval = Duration(seconds: 3);
   static const Duration _autoInterval = Duration(seconds: 10);
+  static const Duration _minLivePublishGap = Duration(seconds: 4);
 
   String get activeSensorId => _activeSensorId;
   // Live (per-frame) figures for the active sensor — these are what the UI
@@ -230,13 +241,25 @@ class AppState extends ChangeNotifier {
     if (_foreground == value) return;
     _foreground = value;
     _reconcileTimers();
-    if (value) {
-      // Catch up immediately on resume rather than waiting out a full interval.
-      _liveSkip = 0;
-      _autoSkip = 0;
-      _refreshLive();
-      refreshFromBackend();
+    if (!value) return;
+
+    final now = DateTime.now();
+    // Ignore the inactive/resumed flicker Android emits during launch and
+    // task-switching — a real resume is seconds apart, not milliseconds.
+    if (now.difference(_foregroundSince) < const Duration(milliseconds: 1500)) {
+      _foregroundSince = now;
+      return;
     }
+    _foregroundSince = now;
+
+    // Catch up on resume, but don't pile a live refresh + a full device
+    // refresh onto the same frame. Live now, stored data a beat later.
+    _liveSkip = 0;
+    _autoSkip = 0;
+    _refreshLive();
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (_foreground) refreshFromBackend();
+    });
   }
 
   /// A screen that shows live sensor numbers (Home, Device detail) calls this
@@ -276,7 +299,19 @@ class AppState extends ChangeNotifier {
       _liveSkip--;
       return;
     }
+    // Flush a change we held back last tick because it landed too soon after
+    // the previous publish (see [_minLivePublishGap]).
+    if (_stagedLive != null &&
+        DateTime.now().difference(_lastLivePublish) >= _minLivePublishGap) {
+      _publishLive(_stagedLive!);
+    }
     _refreshLive();
+  }
+
+  void _publishLive(Map<String, LiveReading> next) {
+    _stagedLive = null;
+    _lastLivePublish = DateTime.now();
+    liveReadings.value = next;
   }
 
   void _tickAuto() {
@@ -319,11 +354,20 @@ class AppState extends ChangeNotifier {
         if (live.available && !live.stale) next[id] = live;
       }
 
-      // Only publish (and therefore rebuild the live widgets) when a rendered
-      // value actually changed — LiveReading equality ignores receivedAt.
-      if (!mapEquals(liveReadings.value, next)) {
-        liveReadings.value = next;
+      // Publish only when a *printed* value changed — LiveReading equality
+      // compares values rounded to display precision, so per-frame sensor
+      // jitter that doesn't move a digit is a no-op (no rebuild, no repaint).
+      if (mapEquals(liveReadings.value, next)) {
+        _stagedLive = null; // a pending change was superseded by "no change"
+        return;
       }
+      // Changed — but rate-limit how often the UI churns. If we published
+      // recently, stage this and let _tickLive flush it once the gap elapses.
+      if (DateTime.now().difference(_lastLivePublish) < _minLivePublishGap) {
+        _stagedLive = next;
+        return;
+      }
+      _publishLive(next);
     } catch (_) {
       // Silent on purpose: this polls every 2s, far more often than the main
       // refresh, and a transient miss shouldn't flash an error banner. The
@@ -800,13 +844,23 @@ class SensorReadings {
   }
 }
 
+double _round1(double v) => (v * 10).roundToDouble() / 10;
+
 /// A single per-frame reading from GET /api/aqi/live — the sensor's raw,
 /// unaveraged frame, not the 12-hour reported figure [SensorReadings] holds.
-/// [aqiInstant] is that one frame's AQI, jitter and all — that's the point.
+///
+/// The metric fields are stored **rounded to the precision the UI prints**
+/// (see [AppState._fmt]) so that per-frame jitter which never moves a visible
+/// digit compares equal — which is what lets the 2s poll skip a rebuild.
+/// [aqiInstant] is the exact frame value (shown as the big number);
+/// [aqiGauge] is it snapped to the nearest 3, used for the dial marker and
+/// the background tint so a ±1 wiggle doesn't repaint the gauge or re-tween a
+/// full-screen gradient.
 class LiveReading {
   final bool available;
   final bool stale;
   final int aqiInstant;
+  final int aqiGauge;
   final String aqiLabel;
   final double pm1;
   final double pm25;
@@ -822,6 +876,7 @@ class LiveReading {
     required this.available,
     required this.stale,
     required this.aqiInstant,
+    required this.aqiGauge,
     required this.aqiLabel,
     required this.pm1,
     required this.pm25,
@@ -842,31 +897,34 @@ class LiveReading {
       available: available,
       stale: json['stale'] == true,
       aqiInstant: aqiVal,
+      aqiGauge: (aqiVal / 3).round() * 3,
       aqiLabel: available ? _aqiLabelFromValue(aqiVal) : '--',
-      pm1:          (metrics['PM1']          as num?)?.toDouble() ?? 0,
-      pm25:         (metrics['PM25']         as num?)?.toDouble() ?? 0,
-      pm10:         (metrics['PM10']         as num?)?.toDouble() ?? 0,
-      tvoc:         (metrics['TVOC']         as num?)?.toDouble() ?? 0,
-      co2:          (metrics['CO2']          as num?)?.toDouble() ?? 0,
-      formaldehyde: (metrics['Formaldehyde'] as num?)?.toDouble() ?? 0,
-      temperature:  (metrics['Temperature']  as num?)?.toDouble() ?? 0,
-      humidity:     (metrics['Humidity']     as num?)?.toDouble() ?? 0,
+      pm1:          _round1((metrics['PM1']  as num?)?.toDouble() ?? 0),
+      pm25:         _round1((metrics['PM25'] as num?)?.toDouble() ?? 0),
+      pm10:         _round1((metrics['PM10'] as num?)?.toDouble() ?? 0),
+      tvoc:         ((metrics['TVOC']         as num?)?.toDouble() ?? 0).roundToDouble(),
+      co2:          ((metrics['CO2']          as num?)?.toDouble() ?? 0).roundToDouble(),
+      formaldehyde: ((metrics['Formaldehyde'] as num?)?.toDouble() ?? 0).roundToDouble(),
+      temperature:  _round1((metrics['Temperature'] as num?)?.toDouble() ?? 0),
+      humidity:     ((metrics['Humidity']    as num?)?.toDouble() ?? 0).roundToDouble(),
       receivedAt: DateTime.tryParse(json['receivedAt']?.toString() ?? '') ??
           DateTime.now(),
     );
   }
 
-  // Equality over the fields that actually render, so the 2s poll can skip
-  // publishing (and rebuilding) an unchanged frame. receivedAt is deliberately
-  // excluded — it ticks every frame and only feeds a relative "Xs ago" label,
-  // which is fine to refresh when a value changes.
+  // Equality over the fields that actually render (already rounded to display
+  // precision in fromJson), so a frame whose printed digits are unchanged is
+  // `==` and the 2s poll skips the publish/rebuild/repaint entirely.
+  // receivedAt is excluded — it only feeds a relative "Xs ago" label.
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is LiveReading &&
           other.available == available &&
           other.stale == stale &&
-          other.aqiInstant == aqiInstant &&
+          // aqiGauge (snapped to 3), not the raw aqiInstant — otherwise a
+          // 1-unit AQI wiggle would defeat the gate every frame.
+          other.aqiGauge == aqiGauge &&
           other.pm1 == pm1 &&
           other.pm25 == pm25 &&
           other.pm10 == pm10 &&
@@ -877,6 +935,6 @@ class LiveReading {
           other.humidity == humidity;
 
   @override
-  int get hashCode => Object.hash(available, stale, aqiInstant, pm1, pm25, pm10,
+  int get hashCode => Object.hash(available, stale, aqiGauge, pm1, pm25, pm10,
       tvoc, co2, formaldehyde, temperature, humidity);
 }
