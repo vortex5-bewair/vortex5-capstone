@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useLiveReadings, findLiveReading } from '../hooks/useLiveReadings'
 import { aqiCategory, textSafeCategoryColor } from '../utils/airQualityGuidance'
 import { useTheme } from '../hooks/useTheme'
@@ -30,6 +31,8 @@ const DeviceDetail = () => {
   const { user } = useAuthContext()
 
   const [device,      setDevice]      = useState(null)
+  // Falls back to plain "BewAir" while the device is still loading/unknown.
+  useDocumentTitle(device?.name)
   const [reading,     setReading]     = useState(null)
   const [loading,     setLoading]     = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
