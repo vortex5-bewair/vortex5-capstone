@@ -60,7 +60,9 @@ class HelpPage extends StatelessWidget {
                 'element rather than measured directly — read them as trends.\n\n'
                 'Sources: ${bands.source}',
                 style: GoogleFonts.inter(
-                    color: const Color(0xFF5B6674), fontSize: 11.5, height: 1.45),
+                    color: const Color(0xFF334155),
+                    fontSize: 14,
+                    height: 1.5),
               ),
             ),
 
@@ -126,10 +128,15 @@ class HelpPage extends StatelessWidget {
         children: [
           Text(label,
               style: GoogleFonts.inter(
-                  fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A))),
-          const SizedBox(height: 2),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF0F172A))),
+          const SizedBox(height: 4),
+          // Same readable style as the "Connecting a New Sensor" paragraph
+          // (was 12.5 / #64748B, which the scanner struggled to detect).
           Text(breakdown,
-              style: GoogleFonts.inter(fontSize: 12.5, color: const Color(0xFF64748B), height: 1.4)),
+              style: GoogleFonts.inter(
+                  fontSize: 14, color: const Color(0xFF334155), height: 1.5)),
         ],
       ),
     );

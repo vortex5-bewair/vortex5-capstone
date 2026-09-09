@@ -319,9 +319,18 @@ class _ShareDevicePageState extends State<ShareDevicePage> {
                           subtitle: Text('$email  •  $role'),
                           trailing: role == 'admin'
                               ? null
-                              : IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                                  onPressed: () => _unshare(email, fullName),
+                              : MergeSemantics(
+                                  child: Semantics(
+                                    label: 'Remove access for $fullName',
+                                    button: true,
+                                    child: IconButton(
+                                      tooltip: 'Remove access',
+                                      icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                          color: Colors.red),
+                                      onPressed: () => _unshare(email, fullName),
+                                    ),
+                                  ),
                                 ),
                         ),
                       );
@@ -341,12 +350,19 @@ class _ShareDevicePageState extends State<ShareDevicePage> {
         prefixIcon: const Icon(Icons.search),
         suffixIcon: _search.isEmpty
             ? null
-            : IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  _searchCtrl.clear();
-                  setState(() => _search = '');
-                },
+            : MergeSemantics(
+                child: Semantics(
+                  label: 'Clear search',
+                  button: true,
+                  child: IconButton(
+                    tooltip: 'Clear search',
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      setState(() => _search = '');
+                    },
+                  ),
+                ),
               ),
         filled: true,
         fillColor: const Color(0xFFF8FAFC),

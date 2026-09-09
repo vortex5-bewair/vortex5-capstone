@@ -149,13 +149,16 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         children: [
           _label('Title'),
-          TextField(controller: _titleCtrl, decoration: _fieldDeco()),
+          TextField(
+            controller: _titleCtrl,
+            decoration: _fieldDeco(hint: 'Enter a title'),
+          ),
           const SizedBox(height: 16),
           _label('Message'),
           TextField(
             controller: _messageCtrl,
             maxLines: 5,
-            decoration: _fieldDeco(),
+            decoration: _fieldDeco(hint: 'Write your announcement'),
           ),
           const SizedBox(height: 16),
           _label('Category'),
@@ -218,8 +221,9 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
         ),
       );
 
-  static InputDecoration _fieldDeco() {
+  static InputDecoration _fieldDeco({String? hint}) {
     return InputDecoration(
+      hintText: hint,
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
