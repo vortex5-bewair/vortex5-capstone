@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/air_quality_bands.dart';
+import '../utils/a11y_text.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
@@ -53,16 +54,23 @@ class HelpPage extends StatelessWidget {
                     f.summary,
                   )),
           if (bands != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                'CO₂ and formaldehyde are estimated by the sensor from its VOC '
-                'element rather than measured directly — read them as trends.\n\n'
-                'Sources: ${bands.source}',
-                style: GoogleFonts.inter(
-                    color: const Color(0xFF5B6674), fontSize: 11.5, height: 1.45),
-              ),
-            ),
+            Builder(builder: (context) {
+              const note =
+                  'CO₂ and formaldehyde are estimated by the sensor from its VOC '
+                  'element rather than measured directly — read them as trends.\n\n';
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  '${note}Sources: ${bands.source}',
+                  semanticsLabel:
+                      '${spokenAirText(note)}Sources: ${bands.source}',
+                  style: GoogleFonts.inter(
+                      color: const Color(0xFF334155),
+                      fontSize: 14,
+                      height: 1.5),
+                ),
+              );
+            }),
 
           const SizedBox(height: 28),
           _sectionTitle('Connecting a New Sensor'),
@@ -125,11 +133,19 @@ class HelpPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
+              // "(µg/m³)" in the label reads badly — announce it in words.
+              semanticsLabel: spokenAirText(label),
               style: GoogleFonts.inter(
-                  fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A))),
-          const SizedBox(height: 2),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF0F172A))),
+          const SizedBox(height: 4),
+          // Same readable style as the "Connecting a New Sensor" paragraph
+          // (was 12.5 / #64748B, which the scanner struggled to detect).
           Text(breakdown,
-              style: GoogleFonts.inter(fontSize: 12.5, color: const Color(0xFF64748B), height: 1.4)),
+              semanticsLabel: spokenAirText(breakdown),
+              style: GoogleFonts.inter(
+                  fontSize: 14, color: const Color(0xFF334155), height: 1.5)),
         ],
       ),
     );

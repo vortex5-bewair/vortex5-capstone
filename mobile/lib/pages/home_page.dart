@@ -7,6 +7,7 @@ import 'package:vortex5_application_2/models/sensor_device.dart';
 import 'package:vortex5_application_2/pages/device_list_page.dart';
 import 'package:vortex5_application_2/pages/share_device_page.dart';
 import 'package:vortex5_application_2/services/air_quality_bands.dart';
+import 'package:vortex5_application_2/utils/a11y_text.dart';
 import 'package:vortex5_application_2/utils/aqi_colors.dart';
 import 'package:vortex5_application_2/utils/device_dialogs.dart';
 import 'package:vortex5_application_2/widgets/error_state.dart';
@@ -782,6 +783,8 @@ class _SensorPanel extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: '  ${c.unit}',
+                    // Screen readers stumble on "µg/m³" — announce it in words.
+                    semanticsLabel: '  ${spokenAirText(c.unit)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w500,
                       fontSize: 12,
@@ -843,6 +846,7 @@ class _SensorPanel extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text(
                     c.unit,
+                    semanticsLabel: spokenAirText(c.unit),
                     style: const TextStyle(color: Color(0xFF5B6674)),
                   ),
                 ),

@@ -437,12 +437,11 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
                     child: IconButton(
                       tooltip: post.pinned ? 'Unpin' : 'Pin',
                       onPressed: () => _togglePin(post),
-                      visualDensity: VisualDensity.compact,
                       icon: Icon(
                         post.pinned
                             ? Icons.push_pin_rounded
                             : Icons.push_pin_outlined,
-                        size: 20,
+                        size: 22,
                         color: post.pinned ? _blue : const Color(0xFF64748B),
                       ),
                     ),
@@ -454,9 +453,8 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
                     child: IconButton(
                       tooltip: 'Edit',
                       onPressed: () => _openEditPage(post),
-                      visualDensity: VisualDensity.compact,
                       icon: const Icon(Icons.edit_outlined,
-                          size: 20, color: Color(0xFF64748B)),
+                          size: 22, color: Color(0xFF64748B)),
                     ),
                   ),
                 ),
@@ -466,9 +464,8 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
                     child: IconButton(
                       tooltip: 'Delete',
                       onPressed: () => _confirmDelete(post),
-                      visualDensity: VisualDensity.compact,
                       icon: const Icon(Icons.delete_outline_rounded,
-                          size: 20, color: Color(0xFF64748B)),
+                          size: 22, color: Color(0xFF64748B)),
                     ),
                   ),
                 ),
