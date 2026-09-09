@@ -59,9 +59,9 @@ class AboutPage extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'BewAir is an IoT-based indoor air quality monitoring system built '
-            'for schools. It helps teachers and administrators track classroom '
-            'air quality in real time — particulate matter, CO₂, TVOC, '
-            'temperature, and humidity — and respond quickly to health and '
+            'for schools. It lets teachers and administrators track classroom '
+            'air quality in real time, including particulate matter, CO2, TVOC, '
+            'temperature and humidity. Staff can respond quickly to health and '
             'safety concerns.',
             style: GoogleFonts.inter(
               color: const Color(0xFF334155),
