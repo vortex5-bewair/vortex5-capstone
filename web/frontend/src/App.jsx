@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import {BrowserRouter, Routes, Route, Navigate, useLocation} from 'react-router-dom'
 import { useAuthContext } from './hooks/useAuthContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 // The app shell and the three entry points stay eager — they are the first
 // paint for a logged-out visitor (LandingPage/Login) or a logged-in one (Home),
@@ -33,10 +34,42 @@ const WebBulletinBoard = lazy(() => import('./pages/WebBulletinBoard.jsx'));
 const Thresholds = lazy(() => import('./pages/Thresholds.jsx'));
 const DeviceDetail = lazy(() => import('./pages/DeviceDetail.jsx'));
 
+// Fixed per-route tab-title labels. "/device/:id" is deliberately absent —
+// DeviceDetail sets its own once the device's actual name has loaded, since
+// a static label here can't know it.
+const PAGE_TITLES = {
+  '/analytics': 'Analytics',
+  '/classroomrecords': 'Classroom Records',
+  '/alerts-and-notifications': 'Alerts',
+  '/connect-sensor': 'Connect Sensor',
+  '/profile': 'Profile',
+  '/bulletin-board': 'Bulletin Board',
+  '/configuration/Thresholds': 'Thresholds',
+  '/configuration/WebBulletinBoard': 'Bulletin Board Settings',
+  '/animation-viewer': 'Animation',
+  '/auditlog': 'Audit Log',
+  '/usermanagement': 'User Management',
+  '/device-management': 'Device Management',
+  '/login': 'Log In',
+  '/signup': 'Sign Up',
+  '/verify-signup': 'Verify Account',
+  '/forgot-password': 'Forgot Password',
+  '/reset-password': 'Reset Password',
+}
+
+function routeTitle(pathname, isLoggedIn) {
+  if (pathname.startsWith('/device/')) return undefined // DeviceDetail owns this one
+  if (pathname === '/') return isLoggedIn ? 'Dashboard' : ''
+  return PAGE_TITLES[pathname] || ''
+}
+
 // Create a separate component for the routes (needs to be inside BrowserRouter)
 function AppRoutes() {
   const { user, authReady } = useAuthContext()
   const location = useLocation()
+  // Called unconditionally, before the authReady guard below, so hook order
+  // stays identical across renders regardless of its outcome.
+  useDocumentTitle(routeTitle(location.pathname, !!user))
 
   // Hold every routing decision until the stored session has been read.
   //
