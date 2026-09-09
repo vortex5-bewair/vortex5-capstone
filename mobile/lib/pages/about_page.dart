@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../utils/a11y_text.dart';
-
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
@@ -59,25 +57,18 @@ class AboutPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Builder(builder: (context) {
-            const body =
-                'BewAir is an IoT-based indoor air quality monitoring system built '
-                'for schools. It helps teachers and administrators track classroom '
-                'air quality in real time — particulate matter, CO₂, TVOC, '
-                'temperature, and humidity — and respond quickly to health and '
-                'safety concerns.';
-            return Text(
-              body,
-              // The em dashes and "CO₂" trip up the accessibility auditor —
-              // announce a plain version.
-              semanticsLabel: spokenAirText(body),
-              style: GoogleFonts.inter(
-                color: const Color(0xFF334155),
-                fontSize: 14,
-                height: 1.5,
-              ),
-            );
-          }),
+          Text(
+            'BewAir is an IoT-based indoor air quality monitoring system built '
+            'for schools. It helps teachers and administrators track classroom '
+            'air quality in real time — particulate matter, CO₂, TVOC, '
+            'temperature, and humidity — and respond quickly to health and '
+            'safety concerns.',
+            style: GoogleFonts.inter(
+              color: const Color(0xFF334155),
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
           const SizedBox(height: 20),
           Text(
             'BewAir is a capstone project, developed to give school staff a '
