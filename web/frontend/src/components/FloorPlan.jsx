@@ -28,7 +28,6 @@ const CORR_H = 8.5
 const COL = [0.75, 28.75, 67.5, 95.5]
 const SPINE_X = 56.75
 const SPINE_W = 10.25
-const ROOM_AREA = Math.round(RW * RD)
 
 // `dx` is where that slot's door sits along the corridor wall.
 const SLOTS = {
@@ -143,16 +142,15 @@ function PlanRoom({ slotKey, room, isDark, managing, isSelected, onActivate }) {
             fill={CATEGORY_COLORS[category]}
           />
           {(({ text, ...rest }) => (
-            <text x={cx} y={s.y + 6.4} textAnchor="middle" className="fp-t-room" {...rest}>{text.toUpperCase()}</text>
+            <text x={cx} y={s.y + 8.0} textAnchor="middle" className="fp-t-room" {...rest}>{text.toUpperCase()}</text>
           ))(nameProps(room.room, RW - 4))}
-          <text x={cx} y={s.y + 9.1} textAnchor="middle" className="fp-t-area">( {ROOM_AREA} s.f. )</text>
-          <text x={cx} y={s.y + 16.4} textAnchor="middle" className="fp-t-aqi" fill={textSafeCategoryColor(category, isDark)}>
+          <text x={cx} y={s.y + 16.6} textAnchor="middle" className="fp-t-aqi" fill={textSafeCategoryColor(category, isDark)}>
             {room.avgAqi}
           </text>
-          <text x={cx} y={s.y + 19.3} textAnchor="middle" className="fp-t-cat" fill={textSafeCategoryColor(category, isDark)}>
+          <text x={cx} y={s.y + 19.5} textAnchor="middle" className="fp-t-cat" fill={textSafeCategoryColor(category, isDark)}>
             {SHORT_ON_PLAN[category] || category.toUpperCase()}
           </text>
-          <text x={cx} y={s.y + 22.0} textAnchor="middle" className="fp-t-meta">
+          <text x={cx} y={s.y + 22.2} textAnchor="middle" className="fp-t-meta">
             {room.devices.length} {room.devices.length === 1 ? 'SENSOR' : 'SENSORS'}
           </text>
         </>
@@ -160,13 +158,12 @@ function PlanRoom({ slotKey, room, isDark, managing, isSelected, onActivate }) {
         <>
           <rect x={s.x} y={s.y} width={RW} height={RD} fill="var(--fp-vacant)" />
           <rect x={s.x} y={s.y} width={RW} height={RD} fill="url(#fpVacantHatch)" />
-          <rect x={s.x + 3.2} y={s.y + 7.6} width={RW - 6.4} height={11.4} fill="var(--fp-vacant)" />
+          <rect x={s.x + 3.2} y={s.y + 8.8} width={RW - 6.4} height={9.0} fill="var(--fp-vacant)" />
           {/* narrower target: this label sits on the plaque, not the full room */}
           {(({ text, ...rest }) => (
-            <text x={cx} y={s.y + 11.2} textAnchor="middle" className="fp-t-room" {...rest}>{text.toUpperCase()}</text>
+            <text x={cx} y={s.y + 12.4} textAnchor="middle" className="fp-t-room" {...rest}>{text.toUpperCase()}</text>
           ))(nameProps(room.room, RW - 8))}
-          <text x={cx} y={s.y + 13.9} textAnchor="middle" className="fp-t-area">( {ROOM_AREA} s.f. )</text>
-          <text x={cx} y={s.y + 17.6} textAnchor="middle" className="fp-t-meta">
+          <text x={cx} y={s.y + 16.0} textAnchor="middle" className="fp-t-meta">
             {room.devices.length ? 'SENSOR OFFLINE' : 'NO SENSOR'}
           </text>
         </>
