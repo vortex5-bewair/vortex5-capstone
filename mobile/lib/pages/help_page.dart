@@ -44,14 +44,18 @@ class HelpPage extends StatelessWidget {
 
           const SizedBox(height: 28),
           _sectionTitle('Sensor Readings Explained'),
+          const SizedBox(height: 4),
+          Text(
+            'Tap a reading to see the bands it is graded against.',
+            style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 13),
+          ),
           const SizedBox(height: 12),
+          // One collapsible card per sensor field. The expanded body is the
+          // same coloured dot + name + range table as "Understanding AQI"
+          // above, built straight from the served band definitions.
           ...(bands?.fields.values ?? const <AirQualityField>[])
               .where((f) => f.key != 'Aqi')
-              .map((f) => _readingRow(
-                    '${f.label}${f.unit.isEmpty ? '' : ' (${f.unit})'}'
-                    '${f.derived ? ' · derived' : ''}',
-                    f.summary,
-                  )),
+              .map(_sensorTile),
           if (bands != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -120,25 +124,62 @@ class HelpPage extends StatelessWidget {
     );
   }
 
-  Widget _readingRow(String label, String breakdown) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  // A tappable dropdown for one sensor reading. ExpansionTile handles the
+  // expand/collapse state, the >=48dp tap target and the a11y "expanded /
+  // collapsed" announcement on its own — no manual Semantics needed.
+  Widget _sensorTile(AirQualityField f) {
+    final title = '${f.label}${f.unit.isEmpty ? '' : ' (${f.unit})'}'
+        '${f.derived ? ' · derived' : ''}';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: ExpansionTile(
+        // Empty borders kill the default divider lines ExpansionTile draws
+        // above and below itself when expanded.
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        iconColor: const Color(0xFF64748B),
+        collapsedIconColor: const Color(0xFF64748B),
+        textColor: const Color(0xFF0F172A),
+        collapsedTextColor: const Color(0xFF0F172A),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF0F172A)),
+        ),
         children: [
-          Text(label,
+          ...f.bands.map((b) => _aqiLegendRow(b.color, b.level, _bandRange(b))),
+          if (f.note.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              f.note,
               style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF0F172A))),
-          const SizedBox(height: 4),
-          // Same readable style as the "Connecting a New Sensor" paragraph
-          // (was 12.5 / #64748B, which the scanner struggled to detect).
-          Text(breakdown,
-              style: GoogleFonts.inter(
-                  fontSize: 14, color: const Color(0xFF334155), height: 1.5)),
+                  fontSize: 13, color: const Color(0xFF64748B), height: 1.45),
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+String _fmtNum(double v) =>
+    v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+
+// Mirrors AqiCategory.range, but sensor bands can be open-ended on either side
+// (JSON has no infinity, so min/max come through as null).
+String _bandRange(AirQualityBand b) {
+  if (b.min == null) return '< ${_fmtNum(b.max!)}';
+  if (b.max == null) return '> ${_fmtNum(b.min!)}';
+  return '${_fmtNum(b.min!)}–${_fmtNum(b.max!)}';
 }
