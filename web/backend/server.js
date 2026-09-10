@@ -31,14 +31,59 @@ const app = express()
 app.set('trust proxy', 1)
 
 // middleware
-app.use(express.json())
-app.use('/uploads', express.static('uploads'))
-
+const helmet = require('helmet')
 const cors = require('cors')
 
-app.use(cors({
-  origin: '*', // allow mobile app + web frontend from any origin
+// Security response headers. This service only ever returns JSON or a handful
+// of uploaded media files — never HTML that pulls in sub-resources — so a
+// near-empty CSP is safe here and leaves nothing executable if a response is
+// ever mis-sniffed as a document.
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      'default-src': ["'none'"],
+      'frame-ancestors': ["'none'"],
+      'base-uri': ["'none'"],
+      'form-action': ["'none'"],
+    },
+  },
+  // Old bulletin-board videos live under /uploads and are embedded by the web
+  // frontend, which runs on a different *.onrender.com subdomain (a separate
+  // site per the public suffix list). A stricter CORP would block them.
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginEmbedderPolicy: false,
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+  referrerPolicy: { policy: 'no-referrer' },
+  frameguard: { action: 'deny' },
 }))
+app.disable('x-powered-by')
+
+// Explicit CORS allowlist instead of "*". The browser clients are the deployed
+// web frontend and the local dev servers; native mobile requests send no
+// Origin header and aren't subject to CORS, so those (!origin) pass through.
+// Add any new web origin here.
+const allowedOrigins = [
+  'https://bewair.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:4173',
+]
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(null, false)
+  },
+}))
+
+app.use(express.json())
+
+// Authenticated API data must not be stored by the browser or a shared cache.
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store')
+  next()
+})
+
+app.use('/uploads', express.static('uploads'))
 
 // routes
 // Public: Render's rolling-deploy health check polls this (no auth token to send).
@@ -55,6 +100,21 @@ app.use('/api/alerts',        alertsRoutes)
 app.use('/api/room',          roomRoutes)
 // Public: the canonical air-quality band table (no auth by design).
 app.use('/api/air-quality',   airQualityRoutes)
+
+// Unknown route → JSON 404 rather than Express's default HTML page.
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' })
+})
+
+// Central error handler: log the detail server-side, return a generic body.
+// Stops an unhandled error from surfacing as Express's default error page
+// (which includes a stack trace when NODE_ENV !== 'production').
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('[unhandled]', err)
+  if (res.headersSent) return next(err)
+  res.status(err.status || 500).json({ error: 'Internal server error' })
+})
 
 // connect to db // mongoose
 mongoose.connect(process.env.MONGO_URI)
