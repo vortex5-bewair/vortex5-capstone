@@ -4,6 +4,8 @@ import { useAuthContext } from '../hooks/useAuthContext'
 import { useTheme } from '../hooks/useTheme'
 import { School, ArrowLeft, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
 import { aqiCategory, textSafeCategoryColor } from '../utils/airQualityGuidance'
+import FloorPlan from '../components/FloorPlan'
+import { FLOORS, SLOT_ORDER } from '../utils/floorPlan'
 
 const STATUS_LABELS = {
   active:    { label: 'Active',   color: '#16a34a', bg: '#dcfce7' },
@@ -26,6 +28,8 @@ const ClassroomRecords = () => {
   // Room add/edit modal state
   const [roomModal, setRoomModal] = useState(null) // null | { mode:'add' } | { mode:'edit', id, name }
   const [roomName, setRoomName] = useState('')
+  const [roomFloor, setRoomFloor] = useState(1)
+  const [roomSlot, setRoomSlot] = useState('')   // '' = no place on the plan
   const [roomBusy, setRoomBusy] = useState(false)
   const [roomError, setRoomError] = useState('')
   const [toast, setToast] = useState('')
@@ -65,14 +69,19 @@ const ClassroomRecords = () => {
   const rooms = useMemo(() => {
     const map = {}
     // Seed with managed rooms (so empty rooms still appear and are editable).
+    // floor/slot ride along for the floor plan; only managed rooms have them.
     for (const r of managedRooms) {
-      map[r.name] = { room: r.name, roomId: r._id, devices: [], aqis: [], online: 0 }
+      map[r.name] = {
+        room: r.name, roomId: r._id,
+        floor: r.floor ?? 1, slot: r.slot ?? null,
+        devices: [], aqis: [], online: 0,
+      }
     }
     // Add device-derived rooms.
     for (const d of devices) {
       const key = d.room?.trim() || 'Unassigned'
       if (!map[key]) {
-        map[key] = { room: key, roomId: null, devices: [], aqis: [], online: 0 }
+        map[key] = { room: key, roomId: null, floor: null, slot: null, devices: [], aqis: [], online: 0 }
       }
       map[key].devices.push(d)
       if (d.aqi != null) map[key].aqis.push(d.aqi)
@@ -89,8 +98,24 @@ const ClassroomRecords = () => {
   }, [devices, managedRooms])
 
   // ---------- Room CRUD ----------
-  const openAdd = () => { setRoomName(''); setRoomError(''); setRoomModal({ mode: 'add' }) }
-  const openEdit = (r) => { setRoomName(r.room); setRoomError(''); setRoomModal({ mode: 'edit', id: r.roomId, name: r.room }) }
+  const openAdd = () => {
+    setRoomName(''); setRoomFloor(1); setRoomSlot('')
+    setRoomError(''); setRoomModal({ mode: 'add' })
+  }
+  const openEdit = (r) => {
+    setRoomName(r.room); setRoomFloor(r.floor ?? 1); setRoomSlot(r.slot ?? '')
+    setRoomError(''); setRoomModal({ mode: 'edit', id: r.roomId, name: r.room })
+  }
+
+  // Slots already spoken for on the floor being edited, so the dialog can grey
+  // them out instead of relying on the backend to reject the save.
+  const takenSlots = useMemo(() => {
+    const taken = {}
+    for (const r of rooms) {
+      if (r.slot && r.floor === Number(roomFloor) && r.roomId !== roomModal?.id) taken[r.slot] = r.room
+    }
+    return taken
+  }, [rooms, roomFloor, roomModal])
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
@@ -104,7 +129,7 @@ const ClassroomRecords = () => {
       const res = await fetch(isEdit ? `/api/room/${roomModal.id}` : '/api/room', {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, floor: Number(roomFloor), slot: roomSlot }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to save room')
@@ -213,6 +238,15 @@ const ClassroomRecords = () => {
 
       {toast && <div className="profile-success">{toast}</div>}
 
+      <FloorPlan
+        rooms={rooms}
+        isDark={isDark}
+        isAdmin={isAdmin}
+        authHeader={authHeader}
+        onOpenRoom={setSelectedRoom}
+        onChanged={() => Promise.all([fetchRooms(), fetchDevices()])}
+      />
+
       {rooms.length === 0 ? (
         <div className="dash-empty">
           No rooms yet. {isAdmin ? 'Tap "Add Room" to create one.' : 'Ask an admin to add rooms.'}
@@ -286,6 +320,37 @@ const ClassroomRecords = () => {
                 onChange={(e) => setRoomName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && saveRoom()}
               />
+              {/* Where the room sits on the floor plan. Kept here rather than
+                  in the plan's own panel: the drawing is fixed geometry, so
+                  placement is a property of the room, not something you drag. */}
+              <div className="fp-place-row">
+                <div className="fp-field">
+                  <label htmlFor="room-floor">Floor</label>
+                  <select
+                    id="room-floor"
+                    value={roomFloor}
+                    onChange={(e) => setRoomFloor(Number(e.target.value))}
+                  >
+                    {FLOORS.map(f => <option key={f.n} value={f.n}>{f.label}</option>)}
+                  </select>
+                </div>
+                <div className="fp-field">
+                  <label htmlFor="room-slot">Place on plan</label>
+                  <select
+                    id="room-slot"
+                    value={roomSlot}
+                    onChange={(e) => setRoomSlot(e.target.value)}
+                  >
+                    <option value="">Not on the plan</option>
+                    {SLOT_ORDER.map(s => (
+                      <option key={s} value={s} disabled={!!takenSlots[s]}>
+                        {s.toUpperCase()}{takenSlots[s] ? ` — taken by ${takenSlots[s]}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {roomError && <div className="profile-error">{roomError}</div>}
               <div className="profile-actions">
                 <button className="dash-action-btn" disabled={roomBusy} onClick={() => setRoomModal(null)}>Cancel</button>
