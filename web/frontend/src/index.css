@@ -6523,7 +6523,6 @@ input, select {
 .fp-svg { display: block; width: 100%; min-width: 660px; height: auto; }
 
 .fp-t-room { font-size: 2.15px; font-weight: 700; letter-spacing: 0.09em; fill: var(--color-text-primary); }
-.fp-t-area { font-size: 1.55px; font-style: italic; fill: var(--color-text-tertiary); }
 .fp-t-aqi  { font-size: 6.4px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .fp-t-cat  { font-size: 1.72px; font-weight: 700; letter-spacing: 0.07em; }
 .fp-t-meta { font-size: 1.4px; font-weight: 500; letter-spacing: 0.06em; fill: var(--color-text-tertiary); }
