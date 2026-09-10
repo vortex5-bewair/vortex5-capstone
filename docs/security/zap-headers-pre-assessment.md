@@ -30,13 +30,43 @@ X-Content-Type-Options / Referrer-Policy / Permissions-Policy — and `cors({ or
 | OWASP ZAP + Java 17+ | https://www.zaproxy.org/download/ (the installer bundles a JRE on Windows) |
 | A local MongoDB | pick one below |
 
-**Local MongoDB — pick one:**
+**Local MongoDB — you very likely already have it.** Check first:
 
-- **Docker (simplest):**
-  `docker run -d --name bewair-mongo -p 27017:27017 mongo:7`
-- **MongoDB Community Server:** install, it listens on `27017` by default.
-- **`mongosh`** (the shell) is handy for Step 4 — comes with either option above or as
-  a standalone download.
+```
+mongosh --eval "db.runCommand({ping:1})"
+```
+
+If it prints `{ ok: 1 }`, you're done — MongoDB is running on `127.0.0.1:27017` and you
+can skip the rest of this box. *(On the current dev machine: MongoDB Server 8.3 +
+`mongosh`, confirmed running.)*
+
+Only if that command fails, install one:
+
+- **MongoDB Community Server** — on the Service Configuration screen keep *Install MongoD
+  as a Service* checked and *Run service as Network Service user* selected. It then runs
+  on `27017` automatically.
+- **or Docker:** `docker run -d --name bewair-mongo -p 27017:27017 mongo:7`
+
+`mongosh` (the shell, used in Step 4 / Step 8) ships with the Community Server installer or
+as a standalone download.
+
+---
+
+## Step 0 — One-time setup
+
+```
+cd web/backend  && npm ci
+cd ../frontend  && npm ci
+```
+
+Both are needed — the backend to run `db:backup` and the server, the frontend for
+`npm run build` / `npm run preview` in Step 3.
+
+Keep a copy of your real `.env` so Step 8 is a file copy, not retyping secrets:
+
+```
+copy web\backend\.env web\backend\.env.atlas
+```
 
 ---
 
@@ -81,6 +111,10 @@ Why `NODE_ENV=production`: otherwise Express's default error handler returns sta
 traces, which ZAP reports as *Application Error Disclosure* — noise for a
 headers-only run.
 
+There is **no "create database" step**. MongoDB brings `bewair_zaptest` into existence
+the moment the backend writes its first document — setting `MONGO_URI` and starting the
+backend *is* creating the throwaway DB. It shares nothing with Atlas.
+
 Optional — load real-shaped data into the throwaway DB:
 
 ```
@@ -124,7 +158,7 @@ So ZAP can crawl authenticated pages. Register through the UI (Sign Up), then pr
 the account in the throwaway DB:
 
 ```
-mongosh bewair_zaptest --eval "db.users.updateOne({ email: 'you@example.com' }, { \$set: { role: 'admin', status: 'active' } })"
+mongosh "mongodb://127.0.0.1:27017/bewair_zaptest" --eval "db.users.updateOne({ email: 'you@example.com' }, { \$set: { role: 'admin', status: 'active' } })"
 ```
 
 Log in once through the browser and confirm you reach the admin dashboard.
@@ -209,9 +243,11 @@ isn't in the template, add it.
 
 1. Stop ZAP. Stop `npm run dev` and `npm run preview`.
 2. Drop the throwaway DB:
-   - Docker: `docker rm -f bewair-mongo`
-   - or `mongosh bewair_zaptest --eval "db.dropDatabase()"`
-3. Restore the real `.env` (`copy .env.atlas .env` / `mv .env.atlas .env`).
+   ```
+   mongosh "mongodb://127.0.0.1:27017/bewair_zaptest" --eval "db.dropDatabase()"
+   ```
+   (or `docker rm -f bewair-mongo` if you used the Docker option.)
+3. Restore the real `.env`: `copy web\backend\.env.atlas web\backend\.env`.
 4. Sanity check nothing upstream changed: `npm run db:backup` again against Atlas and
    compare `manifest.json` counts to the Step 1 backup — they should match.
 

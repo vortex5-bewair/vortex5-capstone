@@ -3,8 +3,10 @@ node_modules/
 web/backend/node_modules/
 web/frontend/node_modules/
 
-# Environment files
+# Environment files (incl. local copies like .env.atlas / .env.zaptest)
 .env
+.env.*
+!.env.example
 
 # Uploads
 web/backend/uploads/
