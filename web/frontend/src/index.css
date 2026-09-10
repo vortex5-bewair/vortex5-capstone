@@ -6383,3 +6383,251 @@ input, select {
   }
 }
 
+
+/* ============================================================================
+   Floor plan (components/FloorPlan.jsx) — Classroom Records
+   ----------------------------------------------------------------------------
+   The drafting palette below is the drawing's own ink, kept separate from the
+   app chrome tokens: the plan reads as a drawing sheet sitting inside a normal
+   card. Dark mode inverts the sheet rather than tinting it, so the wall mass
+   still reads as mass.
+   ========================================================================== */
+:root {
+  --fp-wall:     #1b262f;                 /* wall poché — solid mass */
+  --fp-paper:    #ffffff;                 /* room floor, base for the AQI tint */
+  --fp-vacant:   #a9bfb9;                 /* room with no live sensor */
+  --fp-corridor: #f3ddcf;                 /* circulation */
+  --fp-glass:    #ffffff;                 /* window openings */
+  --fp-hatch:    rgba(27, 38, 47, 0.30);
+  --fp-swing:    #45535f;                 /* door leaf + arc */
+  --fp-sheet:    #fbfaf7;                 /* the sheet behind the plan */
+}
+[data-theme="dark"] {
+  --fp-wall:     #8d9caa;
+  --fp-paper:    #10161d;
+  --fp-vacant:   #2f3f3c;
+  --fp-corridor: #362a20;
+  --fp-glass:    #1e2b38;
+  --fp-hatch:    rgba(200, 216, 230, 0.28);
+  --fp-swing:    #9fb0bf;
+  --fp-sheet:    #0f151b;
+}
+
+.fp-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 26px;
+}
+
+.fp-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.fp-panel-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}
+.fp-panel-sub {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--color-text-tertiary);
+}
+
+.fp-floor-picker { display: flex; align-items: center; gap: 9px; }
+.fp-floor-picker label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+.fp-floor-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 9px 34px 9px 13px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 14px 14px;
+  color: var(--color-text-primary);
+  font: 600 13px/1.2 inherit;
+  cursor: pointer;
+  min-width: 168px;
+}
+.fp-floor-select:hover { border-color: var(--brand-blue); }
+
+.fp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 11px 18px;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.fp-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.fp-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+.fp-legend-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  flex: none;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+}
+
+.fp-manage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font: 600 13px/1 inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fp-manage-btn:hover { background: var(--color-surface-3); border-color: var(--color-border-strong); }
+.fp-manage-btn.is-on {
+  background: var(--brand-blue-soft);
+  color: var(--brand-blue-text-on-soft);
+  border-color: var(--brand-blue);
+}
+
+/* ---------- the drawing ---------- */
+.fp-body { display: flex; align-items: stretch; }
+.fp-sheet { flex: 1 1 auto; min-width: 0; background: var(--fp-sheet); }
+.fp-scroll { overflow-x: auto; padding: 20px; }
+.fp-svg { display: block; width: 100%; min-width: 660px; height: auto; }
+
+.fp-t-room { font-size: 2.15px; font-weight: 700; letter-spacing: 0.09em; fill: var(--color-text-primary); }
+.fp-t-area { font-size: 1.55px; font-style: italic; fill: var(--color-text-tertiary); }
+.fp-t-aqi  { font-size: 6.4px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fp-t-cat  { font-size: 1.72px; font-weight: 700; letter-spacing: 0.07em; }
+.fp-t-meta { font-size: 1.4px; font-weight: 500; letter-spacing: 0.06em; fill: var(--color-text-tertiary); }
+
+.fp-swing { stroke: var(--fp-swing); fill: none; }
+.fp-swing-arc { stroke-width: 0.16; }
+.fp-swing-leaf { stroke-width: 0.42; }
+.fp-mullion { stroke: var(--fp-wall); stroke-width: 0.18; }
+.fp-wall-line { stroke: var(--fp-wall); stroke-width: 0.34; }
+
+.fp-room text { pointer-events: none; }
+.fp-hit { stroke: none; }
+.fp-room-live { cursor: pointer; }
+.fp-room-live:hover .fp-hit { stroke: var(--brand-blue); stroke-width: 0.7; }
+/* The group carries its own indicator (the .fp-hit stroke below), so the
+   UA ring is suppressed — it draws a heavy light halo over the drawing in
+   dark mode and duplicates what we already show. */
+.fp-room-live:focus { outline: none; }
+.fp-room-live:focus-visible { outline: none; }
+.fp-room-live:focus-visible .fp-hit { stroke: var(--brand-blue); stroke-width: 0.9; }
+.fp-room-live.is-selected .fp-hit { stroke: var(--brand-blue); stroke-width: 0.9; }
+
+/* ---------- manage panel ---------- */
+.fp-manage {
+  flex: 0 0 262px;
+  border-left: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-2);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fp-manage-title { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: -0.01em; color: var(--color-text-primary); }
+.fp-manage-hint { margin: 0; font-size: 12px; color: var(--color-text-tertiary); }
+.fp-manage-error { font-size: 12px; color: var(--color-danger); }
+
+.fp-field { display: flex; flex-direction: column; gap: 5px; }
+.fp-field > label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+.fp-field input[type="text"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: 400 13px/1.3 inherit;
+}
+
+.fp-dev-list { display: flex; flex-direction: column; gap: 5px; max-height: 250px; overflow-y: auto; }
+.fp-dev-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+.fp-dev-row input { accent-color: var(--brand-blue); margin: 0; flex: none; }
+.fp-dev-main { display: flex; flex-direction: column; min-width: 0; }
+.fp-dev-id { font-size: 10.5px; color: var(--color-text-tertiary); }
+.fp-dev-where { margin-left: auto; font-size: 10px; color: var(--color-text-tertiary); text-align: right; flex: none; }
+.fp-manage-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
+
+.fp-note {
+  padding: 11px 18px;
+  border-top: 1px dashed var(--color-border);
+  background: var(--color-surface-2);
+  font-size: 12.5px;
+  color: var(--color-text-tertiary);
+}
+.fp-note b { color: var(--color-text-secondary); font-weight: 600; }
+
+/* ---------- placement fields in the Add/Edit Room dialog ---------- */
+.fp-place-row { display: flex; gap: 10px; margin-top: 12px; }
+.fp-place-row .fp-field { flex: 1 1 0; }
+.fp-place-row select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: 400 13px/1.3 inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 920px) {
+  .fp-body { flex-direction: column; }
+  .fp-manage { flex: 1 1 auto; border-left: 0; border-top: 1px solid var(--color-border-subtle); }
+}
+@media (max-width: 560px) {
+  .fp-scroll { padding: 16px 14px; }
+  .fp-floor-picker { width: 100%; }
+  .fp-floor-select { min-width: 0; width: 100%; }
+  .fp-place-row { flex-direction: column; }
+}
