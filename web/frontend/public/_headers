@@ -1,0 +1,26 @@
+# Response headers for the static site (Render / Netlify `_headers` format).
+# Applied to every path. Keep in sync with the API headers set by helmet in
+# web/backend/server.js.
+#
+# CSP notes — the app's real origins, from the source:
+#   - self:                    hashed JS/CSS from the Vite build, index.html
+#   - fonts.googleapis.com:    Google Fonts stylesheet (index.html)
+#   - fonts.gstatic.com:       the font files that stylesheet pulls
+#   - res.cloudinary.com:      profile pictures + bulletin-board videos
+#   - vortex5-capstone.onrender.com: legacy /uploads media (resolveMediaUrl.js)
+#   - 'unsafe-inline' styles:  MUI / emotion inject <style> at runtime
+# There are no inline <script> blocks or inline event handlers, so script-src
+# stays 'self' with no 'unsafe-inline'.
+#
+# If a page breaks after this goes live, switch "Content-Security-Policy" to
+# "Content-Security-Policy-Report-Only" for one deploy, reproduce the break
+# with the browser console open, add the blocked origin to the right
+# directive, then switch back.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Permissions-Policy: accelerometer=(), autoplay=(self), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), xr-spatial-tracking=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://res.cloudinary.com https://vortex5-capstone.onrender.com; media-src 'self' blob: https://res.cloudinary.com https://vortex5-capstone.onrender.com; connect-src 'self' https://vortex5-capstone.onrender.com; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
