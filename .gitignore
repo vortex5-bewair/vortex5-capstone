@@ -9,6 +9,9 @@ web/frontend/node_modules/
 # Uploads
 web/backend/uploads/
 
+# Database backups (scripts/backup-db.js) — contain real user PII
+web/backend/backups/
+
 # Flutter
 mobile/build/
 mobile/.dart_tool/
