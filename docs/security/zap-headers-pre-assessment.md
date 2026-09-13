@@ -134,18 +134,21 @@ cd web/backend
 npm run dev          # http://localhost:4000
 ```
 
-**Frontend:** the Vite **dev** server proxies `/api` to the Render URL
-(`web/frontend/vite.config.js`), which you do **not** want. Use the **preview**
-server instead — its proxy already targets `http://localhost:4000`:
+**Frontend:** build once, then serve it with `preview:secure` — a small local
+static server (`web/frontend/serve-secure.mjs`) that applies the same
+`public/_headers` Render uses and proxies `/api` + `/uploads` to `localhost:4000`:
 
 ```
 cd web/frontend
 npm run build
-npm run preview      # http://localhost:4173
+npm run preview:secure      # http://localhost:4173
 ```
 
-(Alternatively, temporarily change `server.proxy['/api'].target` in `vite.config.js`
-to `http://localhost:4000` and use `npm run dev` — just don't commit that.)
+Use this rather than plain `npm run preview`: Vite's preview server does **not**
+read `public/_headers`, so a scan of it would wrongly report the frontend as
+missing CSP / X-Frame-Options / etc. — a false result for a headers assessment.
+(Plain `npm run preview` is fine for everything except header checks; its `/api`
+proxy also targets `localhost:4000`.)
 
 Open `http://localhost:4173` in a browser and confirm the site loads and talks to the
 local backend (Network tab → `/api/...` calls hitting `localhost:4000`).
