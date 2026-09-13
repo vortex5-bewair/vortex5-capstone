@@ -13,7 +13,7 @@
 
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
-import { join, extname, normalize } from 'node:path'
+import { join, extname, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('./dist', import.meta.url))
@@ -71,7 +71,11 @@ const server = createServer(async (req, res) => {
 
   // Static file, else SPA fallback to index.html.
   let path = normalize(join(ROOT, decodeURIComponent(req.url.split('?')[0])))
-  if (!path.startsWith(ROOT)) return res.writeHead(403).end('forbidden')
+  // A bare `path.startsWith(ROOT)` also matches a sibling directory whose name
+  // happens to start with ROOT's own name (e.g. `dist` vs `dist-old`), since
+  // that's true as a string even though it isn't true as a path. Requiring the
+  // separator right after ROOT (or an exact match, for ROOT itself) closes that.
+  if (path !== ROOT && !path.startsWith(ROOT + sep)) return res.writeHead(403).end('forbidden')
   try {
     if ((await stat(path)).isDirectory()) path = join(path, 'index.html')
   } catch {
