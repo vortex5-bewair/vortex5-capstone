@@ -4,9 +4,10 @@ const AqiModel = require('../models/AqiModel')
 const Device = require('../models/DeviceModel')
 const { decodeFrame } = require('../utils/sensorDecoder')
 const { computeAqi, nowcast, NOWCAST_HOURS } = require('../utils/aqiCalculator')
-
-const HIVEMQ_URL = 'mqtts://1c097cff873e428286ffc57255b3a044.s1.eu.hivemq.cloud:8883'
-const TOPIC      = 'bewair/+/telemetry'
+// Broker and topic layout live in config/mqtt.js, shared with the staging
+// telemetry simulator. Every topic is scoped by MQTT_TOPIC_PREFIX (default
+// `bewair`, which is what production and the real firmware use).
+const { HIVEMQ_URL, TELEMETRY_SUBSCRIPTION, commandTopic, parseTelemetryTopic } = require('../config/mqtt')
 
 let _client = null
 
@@ -154,9 +155,9 @@ function start() {
 
   _client.on('connect', () => {
     console.log('[mqtt] connected to HiveMQ')
-    _client.subscribe(TOPIC, (err) => {
+    _client.subscribe(TELEMETRY_SUBSCRIPTION, (err) => {
       if (err) console.error('[mqtt] subscribe failed:', err.message)
-      else     console.log('[mqtt] subscribed to', TOPIC)
+      else     console.log('[mqtt] subscribed to', TELEMETRY_SUBSCRIPTION)
     })
   })
 
@@ -175,9 +176,8 @@ function start() {
   }, LIVE_EVICT_SWEEP_MS)
 
   _client.on('message', async (topic, payload) => {
-    const parts = topic.split('/')
-    if (parts.length !== 3 || parts[0] !== 'bewair' || parts[2] !== 'telemetry') return
-    const deviceId = parts[1]
+    const deviceId = parseTelemetryTopic(topic)
+    if (!deviceId) return
 
     let metrics
     try {
@@ -317,7 +317,7 @@ function publishCommand(deviceId, command) {
       return reject(new Error('MQTT client not connected'))
     }
     _client.publish(
-      `bewair/${deviceId}/cmd`,
+      commandTopic(deviceId),
       command,
       { qos: 1, retain: false },
       (err) => (err ? reject(err) : resolve())
