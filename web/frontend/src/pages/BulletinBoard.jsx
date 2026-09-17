@@ -5,7 +5,7 @@ import { useAuthContext } from '../hooks/useAuthContext'
 import { useLiveReadings } from '../hooks/useLiveReadings'
 import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper, ChevronLeft, ChevronRight, Pin } from 'lucide-react'
 import bewAirLogo from '../assets/bewair_logo_black.png'
-import { CATEGORY_COLORS, aqiCategory, readableInsightColor } from '../utils/airQualityGuidance'
+import { CATEGORY_COLORS, aqiCategory, aqiAdvisory, readableInsightColor } from '../utils/airQualityGuidance'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
 
 // Announcement category → colour, mirrored from the mobile app's
@@ -264,15 +264,21 @@ const BulletinBoard = () => {
   const pinnedAnnouncements = announcements.filter(a => a.pinned)
   const regularAnnouncements = announcements.filter(a => !a.pinned)
 
-  // Build the ticker text from announcements + a live AQI snippet.
+  // Bottom ticker scrolls the AQI advisory — same reading and colour as the
+  // sidebar's AQI panel — instead of repeating announcement titles that
+  // already have their own place in the sidebar list above.
+  const tickerAqi = freshestLive ? freshestLive.aqiInstant : aqiData?.Aqi
+  const tickerAdvisory = aqiAdvisory(tickerAqi)
+  const tickerColor = tickerAdvisory?.color || '#94a3b8'
+  const tickerTextColor = tickerAdvisory
+    ? readableInsightColor(tickerAdvisory.color, false, 0x22 / 0xff)
+    : '#475569'
+
   const tickerSegments = []
-  if (aqiData) {
-    const cat = aqiCategory(aqiData.Aqi)
-    tickerSegments.push(`Air quality: AQI ${aqiData.Aqi} (${cat})`)
+  if (tickerAdvisory) {
+    tickerSegments.push(`Air quality: AQI ${tickerAqi} (${tickerAdvisory.category})`)
+    tickerAdvisory.actions.forEach(a => tickerSegments.push(a))
   }
-  announcements.forEach(a => {
-    if (a?.title) tickerSegments.push(a.title)
-  })
   if (tickerSegments.length === 0) {
     tickerSegments.push('Welcome to BewAir — School Air Quality Monitor')
   }
@@ -443,10 +449,16 @@ const BulletinBoard = () => {
         </aside>
       </div>
 
-      {/* === Bottom ticker === */}
-      <div className="kiosk-ticker">
+      {/* === Bottom ticker — scrolling AQI advisory, colour-coded to match
+          the AQI panel above === */}
+      <div
+        className="kiosk-ticker"
+        style={{ background: `${tickerColor}22`, borderTopColor: tickerColor }}
+      >
         <div className="kiosk-ticker-track" key={tickerText}>
-          <span className="kiosk-ticker-text">{tickerText.repeat(3)}</span>
+          <span className="kiosk-ticker-text" style={{ color: tickerTextColor }}>
+            {tickerText.repeat(3)}
+          </span>
         </div>
       </div>
     </div>
@@ -511,11 +523,14 @@ const AnnouncementRow = ({ a, pinned = false, dateFallback }) => {
 const AqiPreview = ({ live, reported }) => {
   const category = live ? aqiCategory(live.aqiInstant) : null
   const color = category ? CATEGORY_COLORS[category] : '#94a3b8'
-  const metrics = live?.metrics
   const ageS = live ? Math.round((live.ageMs ?? 0) / 1000) : null
 
   const reportedCategory = reported ? aqiCategory(reported.Aqi) : null
   const reportedColor = CATEGORY_COLORS[reportedCategory] || '#94a3b8'
+
+  // Whichever AQI drives the headline figure above (live when present, else
+  // the 12-hour reported figure) also drives the advisory below it.
+  const advisory = aqiAdvisory(live ? live.aqiInstant : reported?.Aqi)
 
   return (
     <div className="kiosk-aqi-body">
@@ -524,30 +539,6 @@ const AqiPreview = ({ live, reported }) => {
           <div className="kiosk-aqi-live-status">Live · {ageS}s ago</div>
           <div className="kiosk-aqi-number" style={{ color }}>{live.aqiInstant}</div>
           <div className="kiosk-aqi-cat" style={{ color }}>{category || 'No data'}</div>
-          <div className="kiosk-aqi-metrics">
-            <div className="kiosk-aqi-metric">
-              <span>PM 2.5</span>
-              <strong>{metrics?.PM25 ?? '--'} <small>µg/m³</small></strong>
-            </div>
-            <div className="kiosk-aqi-metric">
-              <span>CO₂</span>
-              <strong>{metrics?.CO2 ?? '--'} <small>ppm</small></strong>
-            </div>
-            <div className="kiosk-aqi-metric">
-              <span>Temp</span>
-              <strong>
-                {metrics?.Temperature != null ? metrics.Temperature.toFixed(1) : '--'}
-                <small>°C</small>
-              </strong>
-            </div>
-            <div className="kiosk-aqi-metric">
-              <span>Humidity</span>
-              <strong>
-                {metrics?.Humidity != null ? metrics.Humidity.toFixed(1) : '--'}
-                <small>%</small>
-              </strong>
-            </div>
-          </div>
         </>
       ) : reported ? (
         <>
@@ -558,6 +549,15 @@ const AqiPreview = ({ live, reported }) => {
         </>
       ) : (
         <div className="kiosk-empty">Waiting for a live reading...</div>
+      )}
+
+      {advisory && (
+        <div className="kiosk-aqi-advisory" style={{ borderLeftColor: advisory.color }}>
+          <div className="kiosk-aqi-advisory-label">Advisory</div>
+          <ul className="kiosk-aqi-advisory-list">
+            {advisory.actions.map((a, i) => <li key={i}>{a}</li>)}
+          </ul>
+        </div>
       )}
 
       {live && reported && (
