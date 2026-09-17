@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import {
   Activity, Bell, Smartphone, Users, Megaphone,
   Wind, Droplets, Thermometer, Cpu, Cloud, MonitorSmartphone,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { CATEGORY_COLORS } from '../utils/airQualityGuidance'
+import { resolveMediaUrl } from '../utils/resolveMediaUrl'
 import bewairLogoWhite from '../assets/bewair_logo_white.png'
 import bewairLogoBlack from '../assets/bewair_logo_black.png'
 
@@ -199,6 +201,21 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* ── Educational Videos ── */}
+      <section className="landing-section">
+        <div className="landing-container landing-narrow">
+          <div className="landing-section-head">
+            <h2 className="landing-section-title">Educational Videos</h2>
+            <p className="landing-section-subtitle">
+              Short videos from the school's bulletin board on indoor air quality and
+              how BewAir helps.
+            </p>
+          </div>
+
+          <EducationalVideos />
+        </div>
+      </section>
+
       {/* ── Final CTA ── */}
       <section className="landing-cta">
         <div className="landing-cta-inner">
@@ -223,6 +240,74 @@ const LandingPage = () => {
         </div>
       </footer>
     </div>
+  )
+}
+
+// ── Educational Videos — cycles through the same clips admins upload to the
+// bulletin board (GET /api/media is public, same endpoint the kiosk display
+// and the staff Animation Viewer use). Sized to the section's own reading
+// column (.landing-narrow, 720px) rather than the kiosk's full-bleed stage,
+// so it reads as a normal embedded video, not hallway signage.
+const EducationalVideos = () => {
+  const [videos, setVideos] = useState([])
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    const fetchMedia = async () => {
+      try {
+        const res = await fetch('/api/media')
+        const json = await res.json()
+        if (res.ok && Array.isArray(json)) setVideos(json)
+      } catch (err) {
+        console.error('media:', err)
+      }
+    }
+    fetchMedia()
+  }, [])
+
+  const goPrev = () => setIndex((i) => (i - 1 + videos.length) % videos.length)
+  const goNext = () => setIndex((i) => (i + 1) % videos.length)
+
+  const current = videos[index]
+  const hasMultiple = videos.length > 1
+
+  if (videos.length === 0) {
+    return (
+      <div className="landing-video-empty">
+        Educational videos will appear here once the school admin uploads them to the
+        bulletin board.
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="anim-stage landing-video-stage">
+        <video
+          key={current._id}
+          src={resolveMediaUrl(current.videoUrl)}
+          className="anim-video"
+          controls
+          autoPlay
+          muted
+          playsInline
+        />
+        {hasMultiple && (
+          <>
+            <button className="anim-nav anim-nav-prev" onClick={goPrev} aria-label="Previous video">
+              <ChevronLeft size={24} />
+            </button>
+            <button className="anim-nav anim-nav-next" onClick={goNext} aria-label="Next video">
+              <ChevronRight size={24} />
+            </button>
+          </>
+        )}
+      </div>
+      <p className="landing-video-caption">
+        {current.title || 'Untitled'}
+        {hasMultiple && ` · ${index + 1} of ${videos.length}`}
+      </p>
+    </>
   )
 }
 
