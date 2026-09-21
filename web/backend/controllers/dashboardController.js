@@ -1,7 +1,7 @@
 const Device = require('../models/DeviceModel')
 const User = require('../models/userModel')
-const AqiModel = require('../models/AqiModel')
 const getVisibleDeviceIds = require('../utils/visibleDevices')
+const { isDeviceOnline, latestReadingsByDevice } = require('../utils/deviceStatus')
 const { resolveLimits } = require('../utils/thresholdLimits')
 const { evaluateReading } = require('../utils/alertEvaluator')
 const { categoryFor } = require('../config/airQualityBands')
@@ -22,21 +22,14 @@ const getDashboardSummary = async (req, res) => {
     // 2. Devices the admin owns, with their latest reading
     const devices = await Device.find({ deviceId: { $in: userDeviceIds } }).lean()
 
-    const latestReadings = await AqiModel.aggregate([
-      { $match: { deviceId: { $in: userDeviceIds } } },
-      { $sort: { createdAt: -1 } },
-      { $group: { _id: '$deviceId', latest: { $first: '$$ROOT' } } }
-    ])
-    const readingMap = Object.fromEntries(
-      latestReadings.map(r => [r._id, r.latest])
-    )
+    const readingMap = await latestReadingsByDevice(userDeviceIds)
 
-    // Derive online/offline status (lastSeen < 30s = online).
+    // Derive online/offline status (lastSeen < 30s = online — the rule lives in
+    // utils/deviceStatus.js, shared with the public landing endpoint).
     // When offline, null out reading-derived fields so the UI shows "--" instead of stale data.
     const now = Date.now()
     const enrichedDevices = devices.map(d => {
-      const lastSeen = d.lastSeen ? new Date(d.lastSeen).getTime() : 0
-      const isOnline = d.status === 'online' && (now - lastSeen) < 30 * 1000
+      const isOnline = isDeviceOnline(d, now)
       const reading = isOnline ? readingMap[d.deviceId] : null
       const aqi = reading?.Aqi
       return {
