@@ -1,9 +1,12 @@
-import { PARTNER_SCHOOL, WEBSITE_URL, WEBSITE_LABEL } from '../../utils/partnerSchool'
-import qrCode from '../../assets/bewair-website-qr.svg'
+import { Smartphone } from 'lucide-react'
+import { PARTNER_SCHOOL, WEBSITE_URL, WEBSITE_LABEL, MOBILE_APP_URL } from '../../utils/partnerSchool'
+import qrCode from '../../assets/qr_landingPage.jpg'
 
-// Partner school + the QR code for the website. The QR is a static asset
-// (decoded and checked to equal WEBSITE_URL when it was generated), so it is
-// same-origin as far as the CSP is concerned and needs no runtime library.
+// Partner school + the QR code for the landing page, plus a separate link to
+// the mobile app (Google Drive — no app-store listing yet). The QR is a
+// static asset, so it's same-origin as far as the CSP is concerned and needs
+// no runtime library; the Drive link is a plain external navigation, which
+// the CSP's resource-loading rules don't govern.
 const PartnerSchool = () => (
   <div className="landing-partner">
     <div>
@@ -26,6 +29,14 @@ const PartnerSchool = () => (
       </div>
       <div className="landing-qr-caption">Scan to open the website</div>
       <a className="landing-qr-url" href={WEBSITE_URL}>{WEBSITE_LABEL}</a>
+      <a
+        className="landing-qr-app"
+        href={MOBILE_APP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Smartphone size={14} aria-hidden="true" /> Mobile app
+      </a>
     </div>
   </div>
 )

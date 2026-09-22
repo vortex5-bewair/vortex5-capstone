@@ -13,3 +13,8 @@ export const PARTNER_SCHOOL = {
 
 export const WEBSITE_URL = 'https://bewair.onrender.com'
 export const WEBSITE_LABEL = 'bewair.onrender.com'
+
+// The mobile app isn't on an app store yet — it's distributed as a direct
+// APK download from Google Drive. Opens in a new tab (external host, and a
+// "view" link like this triggers Drive's own download flow).
+export const MOBILE_APP_URL = 'https://drive.google.com/file/d/1jQUfFUnc6V7cP1z0Yuh5-LTCEReqR45S/view'

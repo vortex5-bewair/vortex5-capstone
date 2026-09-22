@@ -6678,6 +6678,29 @@ input, select {
   color: var(--brand-blue);
 }
 
+.landing-qr-app {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 7px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: all var(--t-fast);
+}
+
+.landing-qr-app:hover {
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+  background: var(--brand-blue-soft);
+}
+
 /* ---------- Virtual bulletin board ---------- */
 .landing-board-legend {
   display: flex;
