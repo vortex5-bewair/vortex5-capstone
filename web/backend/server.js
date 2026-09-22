@@ -16,6 +16,7 @@ const dashboardRoutes = require('./routes/dashboard')
 const alertsRoutes = require('./routes/alerts')
 const roomRoutes = require('./routes/room')
 const airQualityRoutes = require('./routes/airQuality')
+const publicLandingRoutes = require('./routes/publicLanding')
 
 const mqttSubscriber = require('./services/mqttSubscriber')
 
@@ -100,6 +101,8 @@ app.use('/api/alerts',        alertsRoutes)
 app.use('/api/room',          roomRoutes)
 // Public: the canonical air-quality band table (no auth by design).
 app.use('/api/air-quality',   airQualityRoutes)
+// Public: sanitized live snapshot for the logged-out landing page (rate-limited).
+app.use('/api/public',        publicLandingRoutes)
 
 // Unknown route → JSON 404 rather than Express's default HTML page.
 app.use((req, res) => {

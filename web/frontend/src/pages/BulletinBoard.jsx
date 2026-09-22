@@ -7,20 +7,7 @@ import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper, ChevronLeft
 import bewAirLogo from '../assets/bewair_logo_black.png'
 import { CATEGORY_COLORS, aqiCategory, aqiAdvisory, readableInsightColor } from '../utils/airQualityGuidance'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
-
-// Announcement category → colour, mirrored from the mobile app's
-// bulletin_board_page.dart (categoryColor) so the same announcement reads the
-// same on a hallway screen and on a phone. Any category outside this set
-// falls back to slate.
-const ANNOUNCEMENT_CATEGORY_COLORS = {
-  'Events': '#F59E0B',          // amber
-  'System Updates': '#1E5BFF',  // brand blue
-  'Achievements': '#10B981',    // emerald
-  'Reminders': '#EF4444',       // coral
-}
-const OTHER_CATEGORY_COLOR = '#64748B' // slate
-const announcementColor = (category) =>
-  ANNOUNCEMENT_CATEGORY_COLORS[category] || OTHER_CATEGORY_COLOR
+import { ANNOUNCEMENT_CATEGORY_COLORS, announcementColor } from '../utils/announcementColors'
 
 // Freshest non-stale device from the live list — same "most recently
 // reported wins" selection today's stored-data poll already uses below,
