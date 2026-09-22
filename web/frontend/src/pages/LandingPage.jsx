@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Activity, Bell, Smartphone, Users, Megaphone,
   Wind, Droplets, Thermometer, Cpu, Cloud, MonitorSmartphone,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Maximize2, Minimize2,
 } from 'lucide-react'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
 import { PARTNER_SCHOOL } from '../utils/partnerSchool'
@@ -260,6 +260,12 @@ const LandingPage = () => {
 const EducationalVideos = () => {
   const [videos, setVideos] = useState([])
   const [index, setIndex] = useState(0)
+  // Same fullscreen pattern as the staff-side Animation Viewer
+  // (pages/AnimationViewer.jsx): request/exit fullscreen on the stage element
+  // itself and track it via the browser's own fullscreenchange event, so the
+  // button stays correct even if the user exits with Esc instead of a click.
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const stageRef = useRef(null)
 
   useEffect(() => {
     const fetchMedia = async () => {
@@ -273,6 +279,20 @@ const EducationalVideos = () => {
     }
     fetchMedia()
   }, [])
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      stageRef.current?.requestFullscreen?.()
+    } else {
+      document.exitFullscreen?.()
+    }
+  }
 
   const goPrev = () => setIndex((i) => (i - 1 + videos.length) % videos.length)
   const goNext = () => setIndex((i) => (i + 1) % videos.length)
@@ -291,7 +311,10 @@ const EducationalVideos = () => {
 
   return (
     <>
-      <div className="anim-stage landing-video-stage">
+      <div
+        className={`anim-stage landing-video-stage ${isFullscreen ? 'anim-stage-fs' : ''}`}
+        ref={stageRef}
+      >
         <video
           key={current._id}
           src={resolveMediaUrl(current.videoUrl)}
@@ -311,6 +334,13 @@ const EducationalVideos = () => {
             </button>
           </>
         )}
+        <button
+          className="anim-fullscreen-btn"
+          onClick={toggleFullscreen}
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+        </button>
       </div>
       <p className="landing-video-caption">
         {current.title || 'Untitled'}
