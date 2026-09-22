@@ -686,4 +686,4 @@ const getDeviceReadings = async (req, res) => {
   }
 }
 
-module.exports = { getAqi, getLatestPerDevice, getLiveReadings, streamLiveReadings, getAnalytics, getDeviceReadings }
+module.exports = { getAqi, getLatestPerDevice, getLiveReadings, streamLiveReadings, getAnalytics, getDeviceReadings, shapeLiveReading, LIVE_STALE_MS }

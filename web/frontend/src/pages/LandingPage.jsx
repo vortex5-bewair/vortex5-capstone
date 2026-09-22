@@ -5,23 +5,15 @@ import {
   Wind, Droplets, Thermometer, Cpu, Cloud, MonitorSmartphone,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
-import { CATEGORY_COLORS } from '../utils/airQualityGuidance'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
+import { PARTNER_SCHOOL } from '../utils/partnerSchool'
+import { usePublicLanding } from '../hooks/usePublicLanding'
+import LiveReadingsCard from '../components/landing/LiveReadingsCard'
+import RoomsAtAGlance from '../components/landing/RoomsAtAGlance'
+import VirtualBulletinBoard from '../components/landing/VirtualBulletinBoard'
+import PartnerSchool from '../components/landing/PartnerSchool'
 import bewairLogoWhite from '../assets/bewair_logo_white.png'
 import bewairLogoBlack from '../assets/bewair_logo_black.png'
-
-// The real AQI scale this system already uses, worst → best — the landing
-// page's signature visual is this exact gradient, not an invented one.
-// Derived from the canonical category order (Good first) rather than named
-// literally, so a change to the DENR table cannot leave a hole in the gradient.
-const AQI_SWEEP = Object.values(CATEGORY_COLORS).reverse()
-
-const SAMPLE_READINGS = [
-  { label: 'PM2.5', value: '12', unit: 'µg/m³' },
-  { label: 'CO₂', value: '612', unit: 'ppm' },
-  { label: 'TVOC', value: '180', unit: 'µg/m³' },
-  { label: 'Temp', value: '24.6', unit: '°C' },
-]
 
 const SOLUTIONS = [
   { icon: Activity, title: 'Live AQI Dashboard', desc: 'Real-time PM2.5, CO₂, TVOC, and more, visualized per classroom the moment a reading comes in.' },
@@ -50,6 +42,10 @@ const STEPS = [
 
 const LandingPage = () => {
   const [scrolled, setScrolled] = useState(false)
+  // One poll feeds the hero card and the rooms list, so they can never disagree.
+  const { data, loaded, error } = usePublicLanding()
+  const headline = data?.summary?.headline ?? null
+  const isLive = !!headline?.live
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
@@ -57,34 +53,43 @@ const LandingPage = () => {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const sweepGradient = `linear-gradient(90deg, ${AQI_SWEEP.join(', ')})`
-
   return (
     <div className="landing">
       {/* ── Nav ── */}
       <nav className={`landing-nav ${scrolled ? 'landing-nav-scrolled' : ''}`}>
         <div className="landing-nav-inner">
-          <div className="landing-nav-brand">
-            <img src={scrolled ? bewairLogoBlack : bewairLogoWhite} alt="BewAir" width={30} height={30} />
-            <span className={scrolled ? 'landing-nav-title-dark' : 'landing-nav-title-light'}>BewAir</span>
+          <a href="#top" className="landing-nav-brand" aria-label="BewAir home">
+            <img src={bewairLogoBlack} alt="" width={28} height={28} />
+            <span className="landing-wordmark"><b>BEW</b>AIR</span>
+          </a>
+          <div className="landing-nav-links">
+            <a href="#rooms">Rooms</a>
+            <a href="#bulletin">Bulletin</a>
+            <a href="#partner">Partner</a>
           </div>
           <div className="landing-nav-actions">
-            <Link to="/login" className={`landing-btn-ghost ${scrolled ? 'landing-btn-ghost-dark' : ''}`}>Log In</Link>
+            <Link to="/login" className="landing-btn-ghost landing-btn-ghost-dark">Log In</Link>
             <Link to="/signup" className="landing-btn-solid">Sign Up</Link>
           </div>
         </div>
       </nav>
 
       {/* ── Hero ── */}
-      <header className="landing-hero">
+      <header className="landing-hero" id="top">
+        <div className="landing-hero-art" aria-hidden="true" />
         <div className="landing-hero-inner">
-          <div className="landing-eyebrow">
-            IoT Air Quality Monitoring for Schools
+          <div className="landing-eyebrow-live">
+            <span className={`landing-live-dot ${isLive ? 'is-live' : ''}`} aria-hidden="true" />
+            <span>
+              {isLive ? 'Live' : 'BewAir'} · {PARTNER_SCHOOL.name}
+              {headline ? ` · ${headline.room}` : ''}
+            </span>
           </div>
 
           <h1 className="landing-hero-title">
-            Indoor air quality,<br />
-            <span className="landing-accent">monitored</span> — not guessed.
+            Your classroom<br />
+            air, <em>visible</em><br />
+            <span className="landing-accent">at last.</span>
           </h1>
 
           <p className="landing-hero-subtitle">
@@ -94,35 +99,25 @@ const LandingPage = () => {
 
           <div className="landing-hero-actions">
             <Link to="/signup" className="landing-btn-solid landing-btn-lg">Sign Up</Link>
-            <Link to="/login" className="landing-btn-ghost landing-btn-lg">Log In</Link>
+            <Link to="/login" className="landing-btn-ghost landing-btn-ghost-dark landing-btn-lg">Log In</Link>
           </div>
 
-          {/* Signature element: the app's real AQI scale as a breath-line */}
-          <div className="landing-sweep-wrap">
-            <div className="landing-sweep" style={{ background: sweepGradient }} />
-            <div className="landing-sweep-labels">
-              <span>Hazardous</span>
-              <span>Good</span>
-            </div>
-          </div>
-
-          <div className="landing-readout">
-            {SAMPLE_READINGS.map((r) => (
-              <div key={r.label} className="landing-readout-chip">
-                <span className="landing-readout-label">{r.label}</span>
-                <span className="landing-readout-value">{r.value}<small>{r.unit}</small></span>
-              </div>
-            ))}
-            <span className="landing-readout-caption">Sample reading from a connected classroom</span>
-          </div>
+          <LiveReadingsCard headline={headline} loaded={loaded} error={error} />
         </div>
       </header>
 
+      {/* ── Rooms at a glance (live, registered devices) ── */}
+      <section id="rooms" className="landing-section landing-section-flush">
+        <div className="landing-container">
+          <RoomsAtAGlance data={data} loaded={loaded} error={error} />
+        </div>
+      </section>
+
       {/* ── The Problem ── */}
-      <section className="landing-section landing-section-transition">
+      <section className="landing-section">
         <div className="landing-container landing-narrow">
           <h2 className="landing-section-title">
-            Classrooms rarely get measured
+            Classrooms rarely get <em>measured</em>
           </h2>
           <p className="landing-body-text">
             Students spend most of the school day indoors, in rooms that are often
@@ -139,7 +134,7 @@ const LandingPage = () => {
       <section className="landing-section landing-section-mist">
         <div className="landing-container">
           <div className="landing-section-head">
-            <h2 className="landing-section-title">How BewAir solves it</h2>
+            <h2 className="landing-section-title">How BewAir <em>solves it</em></h2>
             <p className="landing-section-subtitle">
               A complete monitoring system, built for how schools actually run.
             </p>
@@ -161,7 +156,7 @@ const LandingPage = () => {
       <section className="landing-section">
         <div className="landing-container">
           <div className="landing-section-head">
-            <h2 className="landing-section-title">What it measures</h2>
+            <h2 className="landing-section-title">What it <em>measures</em></h2>
             <p className="landing-section-subtitle">
               Eight readings per sensor, the same ones shown on every BewAir dashboard.
             </p>
@@ -185,7 +180,7 @@ const LandingPage = () => {
       <section className="landing-section landing-section-mist">
         <div className="landing-container landing-narrow">
           <div className="landing-section-head">
-            <h2 className="landing-section-title">How it works</h2>
+            <h2 className="landing-section-title">How it <em>works</em></h2>
           </div>
 
           <div className="landing-steps">
@@ -205,7 +200,7 @@ const LandingPage = () => {
       <section className="landing-section">
         <div className="landing-container landing-narrow">
           <div className="landing-section-head">
-            <h2 className="landing-section-title">Educational Videos</h2>
+            <h2 className="landing-section-title">Educational <em>Videos</em></h2>
             <p className="landing-section-subtitle">
               Short videos from the school's bulletin board on indoor air quality and
               how BewAir helps.
@@ -213,6 +208,20 @@ const LandingPage = () => {
           </div>
 
           <EducationalVideos />
+        </div>
+      </section>
+
+      {/* ── Partner school + QR ── */}
+      <section id="partner" className="landing-section landing-section-mist">
+        <div className="landing-container">
+          <PartnerSchool />
+        </div>
+      </section>
+
+      {/* ── Virtual bulletin board (real announcements, read-only) ── */}
+      <section id="bulletin" className="landing-section">
+        <div className="landing-container">
+          <VirtualBulletinBoard />
         </div>
       </section>
 
