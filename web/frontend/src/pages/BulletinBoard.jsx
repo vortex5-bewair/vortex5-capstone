@@ -3,11 +3,13 @@
 import { useEffect, useState, useRef } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useLiveReadings } from '../hooks/useLiveReadings'
-import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper, ChevronLeft, ChevronRight, Pin } from 'lucide-react'
+import { useAutoScrollList } from '../hooks/useAutoScrollList'
+import { Maximize2, Minimize2, Pause, Play, Newspaper, ChevronLeft, ChevronRight, Pin } from 'lucide-react'
 import bewAirLogo from '../assets/bewair_logo_black.png'
 import { CATEGORY_COLORS, aqiCategory, aqiAdvisory, readableInsightColor } from '../utils/airQualityGuidance'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
-import { ANNOUNCEMENT_CATEGORY_COLORS, announcementColor } from '../utils/announcementColors'
+import { ANNOUNCEMENT_CATEGORY_COLORS } from '../utils/announcementColors'
+import AnnouncementRow from '../components/AnnouncementRow'
 
 // Freshest non-stale device from the live list — same "most recently
 // reported wins" selection today's stored-data poll already uses below,
@@ -71,67 +73,9 @@ const BulletinBoard = () => {
 
   // ---------- Auto-scroll the announcements list ----------
   // A slow, continuous upward crawl through the list, distinct from the
-  // horizontal bottom ticker. Pauses to let a reader settle at the top and
-  // bottom, and pauses entirely on hover so a passer-by can stop it to read.
-  useEffect(() => {
-    const el = newsListRef.current
-    if (!el) return
-
-    const SPEED_PX_PER_SEC = 18
-    const DWELL_MS = 1800
-
-    let rafId
-    let hovering = false
-    let phase = 'scrolling' // 'scrolling' | 'pausedAtBottom' | 'pausedAtTop'
-    let phaseStart = performance.now()
-    let lastTs = phaseStart
-    // scrollTop only stores whole pixels, so a sub-pixel-per-frame speed
-    // (a few tenths of a px at 60fps) would round back to the same integer
-    // every frame and never move. Track the true position separately and
-    // only round when writing it to the DOM.
-    let pos = el.scrollTop
-
-    const onEnter = () => { hovering = true }
-    const onLeave = () => { hovering = false }
-    el.addEventListener('mouseenter', onEnter)
-    el.addEventListener('mouseleave', onLeave)
-
-    const step = (ts) => {
-      const dt = ts - lastTs
-      lastTs = ts
-      const maxScroll = el.scrollHeight - el.clientHeight
-
-      if (maxScroll > 1 && !hovering) {
-        if (phase === 'scrolling') {
-          pos += (SPEED_PX_PER_SEC * dt) / 1000
-          if (pos >= maxScroll) {
-            pos = maxScroll
-            el.scrollTop = pos
-            phase = 'pausedAtBottom'
-            phaseStart = ts
-          } else {
-            el.scrollTop = pos
-          }
-        } else if (phase === 'pausedAtBottom' && ts - phaseStart >= DWELL_MS) {
-          pos = 0
-          el.scrollTop = pos
-          phase = 'pausedAtTop'
-          phaseStart = ts
-        } else if (phase === 'pausedAtTop' && ts - phaseStart >= DWELL_MS) {
-          phase = 'scrolling'
-        }
-      }
-
-      rafId = requestAnimationFrame(step)
-    }
-    rafId = requestAnimationFrame(step)
-
-    return () => {
-      cancelAnimationFrame(rafId)
-      el.removeEventListener('mouseenter', onEnter)
-      el.removeEventListener('mouseleave', onLeave)
-    }
-  }, [announcements])
+  // horizontal bottom ticker (shared with the landing page's copy of this
+  // board — see hooks/useAutoScrollList.js).
+  useAutoScrollList(newsListRef, [announcements])
 
   // ---------- Fetch latest AQI ----------
   useEffect(() => {
@@ -447,49 +391,6 @@ const BulletinBoard = () => {
             {tickerText.repeat(3)}
           </span>
         </div>
-      </div>
-    </div>
-  )
-}
-
-// ===== One announcement row =====
-// Category colour drives a left accent bar and a matching pill, the same
-// coding the mobile bulletin uses. A pinned row also carries a pin glyph.
-const AnnouncementRow = ({ a, pinned = false, dateFallback }) => {
-  const color = announcementColor(a.category)
-  // The pill's own background is a light tint of `color` itself — a couple
-  // of these (amber Events, coral Reminders) only manage 1.98:1 / 3.29:1 as
-  // text on that self-tint. This is a kiosk-only, light-mode-only page, so
-  // no isDark toggle to thread through; 0x1a/0xff matches the background
-  // tint below.
-  const textColor = readableInsightColor(color, false, 0x1a / 0xff)
-  return (
-    <div className="kiosk-news-row" style={{ borderLeft: `4px solid ${color}` }}>
-      <div className="kiosk-news-date">
-        <CalendarDays size={14} />
-        <span>{a.date || dateFallback}</span>
-      </div>
-      <div className="kiosk-news-body">
-        <div className="kiosk-news-tags">
-          {a.category && (
-            <span
-              className="kiosk-news-cat"
-              style={{ color: textColor, borderColor: color, background: `${textColor}1a` }}
-            >
-              {a.category}
-            </span>
-          )}
-          {pinned && (
-            <span className="kiosk-news-pin">
-              <Pin size={11} /> Pinned
-            </span>
-          )}
-        </div>
-        <div className="kiosk-news-title">{a.title}</div>
-        {a.description && (
-          <div className="kiosk-news-desc">{a.description}</div>
-        )}
-        {a.time && <div className="kiosk-news-time">{a.time}</div>}
       </div>
     </div>
   )
