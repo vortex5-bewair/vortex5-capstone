@@ -10,6 +10,7 @@ import LiveReadingsCard from '../components/landing/LiveReadingsCard'
 import RoomsAtAGlance from '../components/landing/RoomsAtAGlance'
 import VirtualBulletinBoard from '../components/landing/VirtualBulletinBoard'
 import PartnerSchool from '../components/landing/PartnerSchool'
+import AboutUs from '../components/landing/AboutUs'
 import bewairLogoWhite from '../assets/bewair_logo_white.png'
 import bewairLogoBlack from '../assets/bewair_logo_black.png'
 
@@ -61,7 +62,7 @@ const LandingPage = () => {
             <span className="landing-wordmark"><b>BEW</b>AIR</span>
           </a>
           <div className="landing-nav-links">
-            <a href="#rooms">Rooms</a>
+            <a href="#about">About Us</a>
             <a href="#bulletin">Bulletin</a>
             <a href="#partner">Partner</a>
           </div>
@@ -104,8 +105,15 @@ const LandingPage = () => {
         </div>
       </header>
 
+      {/* ── About us (team) ── */}
+      <section id="about" className="landing-section landing-section-flush">
+        <div className="landing-container">
+          <AboutUs />
+        </div>
+      </section>
+
       {/* ── Rooms at a glance (live, registered devices) ── */}
-      <section id="rooms" className="landing-section landing-section-flush">
+      <section id="rooms" className="landing-section">
         <div className="landing-container">
           <RoomsAtAGlance data={data} loaded={loaded} error={error} />
         </div>
