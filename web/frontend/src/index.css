@@ -5386,6 +5386,19 @@ input, select {
 @media (max-width: 1024px) {
   .kiosk-main {
     grid-template-columns: 1fr;
+    /* The base rule only defines one row track (sized for the desktop
+       side-by-side layout). With a single column, .kiosk-stage and
+       .kiosk-sidebar need two rows — left as the single minmax(0,1fr) track,
+       the implicit second row claims content-sized space first and starves
+       the explicit row down to 0, so the stage's own min-height then
+       overflows its collapsed row and sits UNDER the sidebar instead of
+       above it. `auto auto` isn't a fix either: .kiosk-sidebar's nested
+       `flex:1; min-height:0` chain (down to .kiosk-news-list) contributes
+       almost nothing to an *intrinsic* row-height measurement, so the
+       sidebar's own auto row also collapses. Giving the stage its natural
+       height and the sidebar a definite 1fr share (like the desktop rule)
+       lets that same flex:1 chain size normally against a real number. */
+    grid-template-rows: auto minmax(0, 1fr);
   }
 }
 
@@ -6732,9 +6745,39 @@ input, select {
    Reuses the kiosk's own .kiosk-section/.kiosk-combined-news/.kiosk-news-*
    classes (see BulletinBoard.jsx) so the design is identical — this class
    only sizes the panel down for a page section instead of a full screen. */
-.landing-board-panel {
-  max-width: 640px;
-  height: 560px;
+/* .kiosk-root normally sizes itself to the viewport (min-height: calc(100vh -
+   80px), grows to fullscreen); pin it to a fixed height instead so it reads
+   as a bounded "mini screen" inside a page section. The compound selector
+   (not just .landing-board-panel) beats .kiosk-root's own rule on
+   specificity regardless of source order. */
+.landing-board-panel.kiosk-root {
+  /* Tall enough that the AQI block (number + advisory + 12-hr line) doesn't
+     crush the announcements list down to nothing — verified by rendering. */
+  height: 760px;
+  min-height: 0;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* .kiosk-main already stacks stage-over-sidebar under 1024px (see its own
+   media query). That stack needs a lot more vertical room than the
+   side-by-side desktop layout does, and a smaller video area leaves more of
+   it to the AQI + announcements panel, which is the more useful content on a
+   page section (the video already has its own dedicated section above).
+   overflow-y is a safety net for whatever the fixed height still can't fit —
+   it scrolls in place rather than growing the page underneath it. */
+@media (max-width: 1024px) {
+  .landing-board-panel.kiosk-root {
+    height: 900px;
+  }
+
+  .landing-board-panel .kiosk-stage {
+    min-height: 220px;
+  }
+
+  .landing-board-panel .kiosk-main {
+    overflow-y: auto;
+  }
 }
 
 /* ---------- Final CTA ---------- */
@@ -6868,6 +6911,24 @@ input, select {
 }
 
 @media (max-width: 480px) {
+  /* The kiosk header's clock is sized for a hallway screen — on a phone-width
+     mini panel it wraps onto two lines and crowds the brand mark. */
+  .landing-board-panel .kiosk-header {
+    padding: 12px 16px;
+  }
+
+  .landing-board-panel .kiosk-brand span {
+    font-size: 18px;
+  }
+
+  .landing-board-panel .kiosk-time {
+    font-size: 22px;
+  }
+
+  .landing-board-panel .kiosk-date {
+    font-size: 11px;
+  }
+
   /* Name, then the status pill, then the chips — a long category name would
      otherwise squeeze the room name into a column of single words. */
   .landing-room {
@@ -6899,10 +6960,6 @@ input, select {
 
   .landing-chip-value {
     font-size: 14px;
-  }
-
-  .landing-board-panel {
-    height: 480px;
   }
 
   .landing-qr-card img {
