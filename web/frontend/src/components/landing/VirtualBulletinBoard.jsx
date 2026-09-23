@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Newspaper, Pin } from 'lucide-react'
+import { Newspaper, Pin, Maximize2, Minimize2 } from 'lucide-react'
 import { useCachedFetch } from '../../hooks/useCachedFetch'
 import { useAutoScrollList } from '../../hooks/useAutoScrollList'
 import AnnouncementRow from '../AnnouncementRow'
@@ -17,14 +17,32 @@ import bewAirLogo from '../../assets/bewair_logo_black.png'
 // apart visually. .landing-board-panel only bounds it to a fixed size for a
 // page section instead of the kiosk's full-screen layout.
 //
-// No admin chrome — no play/pause, no fullscreen, no video picker, no "new
-// post" — this is a live preview of the real thing, not the console itself.
+// No admin chrome — no play/pause, no video picker, no "new post" — this is
+// a live preview of the real thing, not the console itself. The one control
+// it does offer is fullscreen, same pattern as the staff kiosk and the
+// Animation Viewer: request/exit fullscreen on the panel itself and track it
+// via the browser's own fullscreenchange event.
 //
 // `data`/`loaded`/`error` are the shared GET /api/public/landing poll
 // (lifted to LandingPage so the hero card, the rooms list and this AQI panel
 // can never disagree about the same reading).
 const VirtualBulletinBoard = ({ data, loaded, error }) => {
   const headline = data?.summary?.headline ?? null
+
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const panelRef = useRef(null)
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      panelRef.current?.requestFullscreen?.()
+    } else {
+      document.exitFullscreen?.()
+    }
+  }
 
   // ---------- Announcements (same public endpoint + auto-scroll as the kiosk) ----------
   const { data: announcementsData, loading: annLoading, error: annError } =
@@ -94,7 +112,10 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
         Virtual<br /><em>Bulletin Board</em>
       </h2>
 
-      <div className="kiosk-root landing-board-panel">
+      <div
+        className={`kiosk-root landing-board-panel ${isFullscreen ? 'kiosk-fullscreen' : ''}`}
+        ref={panelRef}
+      >
         <div className="kiosk-header">
           <div className="kiosk-brand">
             <img src={bewAirLogo} alt="BewAir" width={40} height={40} />
@@ -108,6 +129,13 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
 
         <div className="kiosk-main">
           <div className="kiosk-stage">
+            <button
+              className="anim-fullscreen-btn"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
+              {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </button>
             {hasVideos ? (
               <>
                 <video
