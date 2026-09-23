@@ -221,7 +221,7 @@ const LandingPage = () => {
       {/* ── Virtual bulletin board (real announcements, read-only) ── */}
       <section id="bulletin" className="landing-section">
         <div className="landing-container">
-          <VirtualBulletinBoard />
+          <VirtualBulletinBoard data={data} loaded={loaded} error={error} />
         </div>
       </section>
 
