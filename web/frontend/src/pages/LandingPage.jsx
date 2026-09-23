@@ -1,17 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Activity, Bell, Smartphone, Users, Megaphone,
   Wind, Droplets, Thermometer, Cpu, Cloud, MonitorSmartphone,
-  ChevronLeft, ChevronRight, Maximize2, Minimize2,
 } from 'lucide-react'
-import { resolveMediaUrl } from '../utils/resolveMediaUrl'
 import { PARTNER_SCHOOL } from '../utils/partnerSchool'
 import { usePublicLanding } from '../hooks/usePublicLanding'
 import LiveReadingsCard from '../components/landing/LiveReadingsCard'
 import RoomsAtAGlance from '../components/landing/RoomsAtAGlance'
 import VirtualBulletinBoard from '../components/landing/VirtualBulletinBoard'
 import PartnerSchool from '../components/landing/PartnerSchool'
+import AboutUs from '../components/landing/AboutUs'
 import bewairLogoWhite from '../assets/bewair_logo_white.png'
 import bewairLogoBlack from '../assets/bewair_logo_black.png'
 
@@ -63,7 +62,7 @@ const LandingPage = () => {
             <span className="landing-wordmark"><b>BEW</b>AIR</span>
           </a>
           <div className="landing-nav-links">
-            <a href="#rooms">Rooms</a>
+            <a href="#about">About Us</a>
             <a href="#bulletin">Bulletin</a>
             <a href="#partner">Partner</a>
           </div>
@@ -106,8 +105,15 @@ const LandingPage = () => {
         </div>
       </header>
 
+      {/* ── About us (team) ── */}
+      <section id="about" className="landing-section landing-section-flush">
+        <div className="landing-container">
+          <AboutUs />
+        </div>
+      </section>
+
       {/* ── Rooms at a glance (live, registered devices) ── */}
-      <section id="rooms" className="landing-section landing-section-flush">
+      <section id="rooms" className="landing-section">
         <div className="landing-container">
           <RoomsAtAGlance data={data} loaded={loaded} error={error} />
         </div>
@@ -196,18 +202,10 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── Educational Videos ── */}
-      <section className="landing-section">
-        <div className="landing-container landing-narrow">
-          <div className="landing-section-head">
-            <h2 className="landing-section-title">Educational <em>Videos</em></h2>
-            <p className="landing-section-subtitle">
-              Short videos from the school's bulletin board on indoor air quality and
-              how BewAir helps.
-            </p>
-          </div>
-
-          <EducationalVideos />
+      {/* ── Virtual bulletin board (real announcements, read-only) ── */}
+      <section id="bulletin" className="landing-section">
+        <div className="landing-container">
+          <VirtualBulletinBoard data={data} loaded={loaded} error={error} />
         </div>
       </section>
 
@@ -215,13 +213,6 @@ const LandingPage = () => {
       <section id="partner" className="landing-section landing-section-mist">
         <div className="landing-container">
           <PartnerSchool />
-        </div>
-      </section>
-
-      {/* ── Virtual bulletin board (real announcements, read-only) ── */}
-      <section id="bulletin" className="landing-section">
-        <div className="landing-container">
-          <VirtualBulletinBoard data={data} loaded={loaded} error={error} />
         </div>
       </section>
 
@@ -249,104 +240,6 @@ const LandingPage = () => {
         </div>
       </footer>
     </div>
-  )
-}
-
-// ── Educational Videos — cycles through the same clips admins upload to the
-// bulletin board (GET /api/media is public, same endpoint the kiosk display
-// and the staff Animation Viewer use). Sized to the section's own reading
-// column (.landing-narrow, 720px) rather than the kiosk's full-bleed stage,
-// so it reads as a normal embedded video, not hallway signage.
-const EducationalVideos = () => {
-  const [videos, setVideos] = useState([])
-  const [index, setIndex] = useState(0)
-  // Same fullscreen pattern as the staff-side Animation Viewer
-  // (pages/AnimationViewer.jsx): request/exit fullscreen on the stage element
-  // itself and track it via the browser's own fullscreenchange event, so the
-  // button stays correct even if the user exits with Esc instead of a click.
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const stageRef = useRef(null)
-
-  useEffect(() => {
-    const fetchMedia = async () => {
-      try {
-        const res = await fetch('/api/media')
-        const json = await res.json()
-        if (res.ok && Array.isArray(json)) setVideos(json)
-      } catch (err) {
-        console.error('media:', err)
-      }
-    }
-    fetchMedia()
-  }, [])
-
-  useEffect(() => {
-    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement)
-    document.addEventListener('fullscreenchange', onFsChange)
-    return () => document.removeEventListener('fullscreenchange', onFsChange)
-  }, [])
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      stageRef.current?.requestFullscreen?.()
-    } else {
-      document.exitFullscreen?.()
-    }
-  }
-
-  const goPrev = () => setIndex((i) => (i - 1 + videos.length) % videos.length)
-  const goNext = () => setIndex((i) => (i + 1) % videos.length)
-
-  const current = videos[index]
-  const hasMultiple = videos.length > 1
-
-  if (videos.length === 0) {
-    return (
-      <div className="landing-video-empty">
-        Educational videos will appear here once the school admin uploads them to the
-        bulletin board.
-      </div>
-    )
-  }
-
-  return (
-    <>
-      <div
-        className={`anim-stage landing-video-stage ${isFullscreen ? 'anim-stage-fs' : ''}`}
-        ref={stageRef}
-      >
-        <video
-          key={current._id}
-          src={resolveMediaUrl(current.videoUrl)}
-          className="anim-video"
-          controls
-          autoPlay
-          muted
-          playsInline
-        />
-        {hasMultiple && (
-          <>
-            <button className="anim-nav anim-nav-prev" onClick={goPrev} aria-label="Previous video">
-              <ChevronLeft size={24} />
-            </button>
-            <button className="anim-nav anim-nav-next" onClick={goNext} aria-label="Next video">
-              <ChevronRight size={24} />
-            </button>
-          </>
-        )}
-        <button
-          className="anim-fullscreen-btn"
-          onClick={toggleFullscreen}
-          aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-        >
-          {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-        </button>
-      </div>
-      <p className="landing-video-caption">
-        {current.title || 'Untitled'}
-        {hasMultiple && ` · ${index + 1} of ${videos.length}`}
-      </p>
-    </>
   )
 }
 
