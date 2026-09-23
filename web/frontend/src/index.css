@@ -6757,6 +6757,29 @@ input, select {
   min-height: 0;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
+
+  /* This is a page preview, not the staff console — it should always read
+     like the physical kiosk screen (light), regardless of the visitor's
+     site-wide theme. Re-declaring the tokens the .kiosk-* rules consume
+     pins every descendant to their light-theme values even when an
+     ancestor has [data-theme="dark"]; the inline overrides below always
+     win over inherited ones for the same custom property. */
+  --color-bg: #f6f8fb;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8fafc;
+  --color-surface-3: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #eef2f6;
+  --color-border-strong: #cbd5e1;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #64748b;
+  --brand-blue-soft: #e7f1ff;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.08), 0 4px 10px rgba(15, 23, 42, 0.05);
+  color-scheme: light;
 }
 
 /* .kiosk-main already stacks stage-over-sidebar under 1024px (see its own
