@@ -96,11 +96,6 @@ const LandingPage = () => {
             alerts, so admins and staff always know when the air needs attention.
           </p>
 
-          <div className="landing-hero-actions">
-            <Link to="/signup" className="landing-btn-solid landing-btn-lg">Sign Up</Link>
-            <Link to="/login" className="landing-btn-ghost landing-btn-ghost-dark landing-btn-lg">Log In</Link>
-          </div>
-
           <LiveReadingsCard headline={headline} loaded={loaded} error={error} />
         </div>
       </header>

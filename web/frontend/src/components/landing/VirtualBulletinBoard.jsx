@@ -109,7 +109,7 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
     <>
       <p className="landing-eyebrow-blue">{PARTNER_SCHOOL.name}</p>
       <h2 className="landing-section-title">
-        Virtual<br /><em>Bulletin Board</em>
+        Virtual <em>Bulletin Board</em>
       </h2>
 
       <div
