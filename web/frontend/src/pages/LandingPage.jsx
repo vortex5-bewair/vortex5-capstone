@@ -206,9 +206,7 @@ const LandingPage = () => {
 
       {/* ── Partner school + QR ── */}
       <section id="partner" className="landing-section landing-section-mist">
-        <div className="landing-container">
-          <PartnerSchool />
-        </div>
+        <PartnerSchool />
       </section>
 
       {/* ── Final CTA ── */}

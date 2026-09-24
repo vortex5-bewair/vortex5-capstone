@@ -6651,28 +6651,27 @@ input, select {
   color: var(--brand-blue);
 }
 
-/* Faint full-bleed banner behind the whole Partner section. #partner is the
-   positioning root; .landing-partner-banner is absolutely positioned so it
-   spans edge-to-edge rather than being boxed in by .landing-container's
-   max-width, and its low opacity is independent of the content painted over
-   it (an opacity on the section itself would fade the text too). */
+/* Faint full-bleed banner behind the whole Partner section. #partner is a
+   direct parent of the banner div (not .landing-container, which is
+   narrower and centered) so inset:0 spans the section edge-to-edge. z-index:
+   0 on #partner gives it its own stacking context, so the banner's negative
+   z-index — which puts it behind the section's other, non-positioned
+   content without needing to touch that content's own stacking — stays
+   contained to this section instead of escaping to the page's root one. */
 #partner {
   position: relative;
+  z-index: 0;
   overflow: hidden;
 }
 
 .landing-partner-banner {
   position: absolute;
   inset: 0;
+  z-index: -1;
   background-size: cover;
   background-position: center;
-  opacity: 0.1;
+  opacity: 0.05;
   pointer-events: none;
-}
-
-#partner .landing-container {
-  position: relative;
-  z-index: 1;
 }
 
 .landing-partner {
