@@ -9,6 +9,11 @@ import stVincentBanner from '../../assets/St_Vincent_Banner.jpg'
 // static assets, so they're same-origin as far as the CSP is concerned and
 // need no runtime library; the Drive link is a plain external navigation,
 // which the CSP's resource-loading rules don't govern.
+// Renders its own full-bleed banner + .landing-container (rather than
+// leaving the container to LandingPage.jsx, like the other landing
+// sections) so the banner can be a direct child of the section — sized to
+// the whole section by #partner's position:relative, not boxed in by the
+// container's max-width the way a descendant of it would be.
 const PartnerSchool = () => (
   <>
     <div
@@ -17,37 +22,39 @@ const PartnerSchool = () => (
       aria-hidden="true"
     />
 
-    <div className="landing-partner">
-      <div>
-        <p className="landing-eyebrow-blue">Partner school</p>
-        <div className="landing-partner-card">
-          <div className="landing-partner-badge">
-            <img src={stVincentLogo} alt={`${PARTNER_SCHOOL.name} logo`} width={44} height={44} />
-          </div>
-          <div>
-            <h3 className="landing-partner-name">{PARTNER_SCHOOL.name}</h3>
-            <div className="landing-partner-meta">
-              {PARTNER_SCHOOL.address} · Est. {PARTNER_SCHOOL.established}
+    <div className="landing-container">
+      <div className="landing-partner">
+        <div>
+          <p className="landing-eyebrow-blue">Partner school</p>
+          <div className="landing-partner-card">
+            <div className="landing-partner-badge">
+              <img src={stVincentLogo} alt={`${PARTNER_SCHOOL.name} logo`} width={44} height={44} />
+            </div>
+            <div>
+              <h3 className="landing-partner-name">{PARTNER_SCHOOL.name}</h3>
+              <div className="landing-partner-meta">
+                {PARTNER_SCHOOL.address} · Est. {PARTNER_SCHOOL.established}
+              </div>
             </div>
           </div>
+          <p className="landing-partner-blurb">{PARTNER_SCHOOL.blurb}</p>
         </div>
-        <p className="landing-partner-blurb">{PARTNER_SCHOOL.blurb}</p>
-      </div>
 
-      <div className="landing-qr">
-        <div className="landing-qr-card">
-          <img src={qrCode} alt="QR code to download the BewAir mobile app" width={208} height={208} />
+        <div className="landing-qr">
+          <div className="landing-qr-card">
+            <img src={qrCode} alt="QR code to download the BewAir mobile app" width={208} height={208} />
+          </div>
+          <div className="landing-qr-caption">Scan to download mobile app</div>
+          <a className="landing-qr-url" href={WEBSITE_URL}>{WEBSITE_LABEL}</a>
+          <a
+            className="landing-qr-app"
+            href={MOBILE_APP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Smartphone size={14} aria-hidden="true" /> Mobile app
+          </a>
         </div>
-        <div className="landing-qr-caption">Scan to download mobile app</div>
-        <a className="landing-qr-url" href={WEBSITE_URL}>{WEBSITE_LABEL}</a>
-        <a
-          className="landing-qr-app"
-          href={MOBILE_APP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Smartphone size={14} aria-hidden="true" /> Mobile app
-        </a>
       </div>
     </div>
   </>
