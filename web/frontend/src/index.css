@@ -6651,6 +6651,30 @@ input, select {
   color: var(--brand-blue);
 }
 
+/* Faint full-bleed banner behind the whole Partner section. #partner is the
+   positioning root; .landing-partner-banner is absolutely positioned so it
+   spans edge-to-edge rather than being boxed in by .landing-container's
+   max-width, and its low opacity is independent of the content painted over
+   it (an opacity on the section itself would fade the text too). */
+#partner {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-partner-banner {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+#partner .landing-container {
+  position: relative;
+  z-index: 1;
+}
+
 .landing-partner {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
@@ -6675,10 +6699,13 @@ input, select {
   border-radius: var(--radius-lg);
   background: var(--brand-blue-soft);
   border: 1px solid #c9dffb;
-  color: var(--brand-blue);
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: 600;
+  overflow: hidden;
+}
+
+.landing-partner-badge img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
 }
 
 .landing-partner-name {

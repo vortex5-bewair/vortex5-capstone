@@ -32,7 +32,7 @@ const RoomsAtAGlance = ({ data, loaded, error }) => {
     <>
       <div className="landing-rooms-head">
         <h2 className="landing-section-title">
-          Rooms<br /><em>at a glance</em>
+          Rooms <em>at a glance</em>
         </h2>
         {summary && (
           <div className="landing-rooms-meta">
