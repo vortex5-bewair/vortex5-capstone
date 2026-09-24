@@ -6681,6 +6681,15 @@ input, select {
   align-items: center;
 }
 
+/* Lifts the text off the banner behind it — needed even at the banner's low
+   opacity, since its light background photo still shows enough through
+   dark body text to hurt contrast. */
+.landing-partner-info {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+}
+
 .landing-partner-card {
   display: flex;
   align-items: center;

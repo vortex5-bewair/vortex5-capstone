@@ -24,7 +24,7 @@ const PartnerSchool = () => (
 
     <div className="landing-container">
       <div className="landing-partner">
-        <div>
+        <div className="landing-partner-info">
           <p className="landing-eyebrow-blue">Partner school</p>
           <div className="landing-partner-card">
             <div className="landing-partner-badge">
