@@ -1,6 +1,9 @@
 const Media = require('../models/MediaModel')
 const cloudinary = require('../utils/cloudinary')
 const logAudit = require('../utils/logAudit')
+const { AQI_CATEGORIES } = require('../config/airQualityBands')
+
+const WARNING_CATEGORIES = AQI_CATEGORIES.filter((c) => c.name !== 'Good').map((c) => c.name)
 
 /* GET ALL MEDIA */
 const getMedia = async (req, res) => {
@@ -15,10 +18,17 @@ const createMedia = async (req, res) => {
     console.log('BODY:', req.body)
 
     const { title } = req.body
+    const videoType = req.body.videoType === 'Warning' ? 'Warning' : 'Educational'
     const actor = req.user?.email || 'Unknown'
 
     if (!req.file) {
       return res.status(400).json({ error: 'No video file uploaded' })
+    }
+
+    if (videoType === 'Warning' && !WARNING_CATEGORIES.includes(req.body.aqiCategory)) {
+      return res.status(400).json({
+        error: `A warning video needs an AQI category (one of: ${WARNING_CATEGORIES.join(', ')}).`
+      })
     }
 
     // req.file.path is the Cloudinary secure URL, req.file.filename is its
@@ -27,12 +37,16 @@ const createMedia = async (req, res) => {
       title,
       videoUrl: req.file.path,
       publicId: req.file.filename,
+      videoType,
+      aqiCategory: videoType === 'Warning' ? req.body.aqiCategory : null,
     })
 
     // Add audit log for upload
     await logAudit({
       module: 'Bulletin Board',
-      action: `Video "${title || 'Untitled'}" was uploaded`,
+      action: videoType === 'Warning'
+        ? `Warning video "${title || 'Untitled'}" was uploaded for "${media.aqiCategory}"`
+        : `Video "${title || 'Untitled'}" was uploaded`,
       user: actor
     })
 
