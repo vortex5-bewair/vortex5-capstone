@@ -92,6 +92,17 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
     if (educationalVideos.length > 1) setVideoIndex((i) => (i + 1) % educationalVideos.length)
   }
 
+  // Sound is on only while the board is fullscreen — both video types, and it
+  // carries across each new video that mounts (rotation or warning). Clicking
+  // the fullscreen button is the user gesture that lets the browser allow
+  // audible playback; embedded in the page it stays muted, since autoplay
+  // with sound is blocked there. Set on the element directly because React
+  // doesn't reliably update the `muted` attribute after mount.
+  const currentVideoId = currentVideo?._id
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = !isFullscreen
+  }, [isFullscreen, currentVideoId])
+
   // ---------- Clock (same format as the kiosk header) ----------
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
