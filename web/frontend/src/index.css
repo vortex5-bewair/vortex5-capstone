@@ -2579,6 +2579,10 @@ input, select {
 
 .media-card video {
   width: 100%;
+  /* Fixed landscape frame: the video letterboxes inside it, so a portrait or
+     odd-sized upload can't stretch its card and throw off the rest of the row. */
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
   border-radius: 8px;
   background: #000;
 }
