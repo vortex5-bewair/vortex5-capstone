@@ -14,7 +14,9 @@ const AnimationViewer = () => {
       try {
         const res = await fetch('/api/media')
         const json = await res.json()
-        if (res.ok) setMedia(json)
+        // Warning videos only play on the kiosk when the AQI reaches their
+        // category — they don't belong in this always-on rotation.
+        if (res.ok) setMedia(json.filter((m) => m.videoType !== 'Warning'))
       } catch (err) {
         console.error('Failed to load media:', err)
       }

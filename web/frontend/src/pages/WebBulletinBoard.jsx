@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Pencil, Trash2, Pin } from 'lucide-react'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
+import { airQualityCategories, CATEGORY_COLORS } from '../utils/airQualityGuidance'
 
 // Same category list the mobile app's announcement form uses — kept identical
 // so the two apps produce consistent data. Date and time are no longer entered
@@ -16,11 +17,21 @@ const WebBulletinBoard = () => {
  /* ------------------ EDUCATIONAL VIDEO -------------- */
 
   const [videoFile, setVideoFile] = useState(null)
+  const [videoType, setVideoType] = useState('Educational')
+  const [warningCategory, setWarningCategory] = useState('')
   const [mediaList, setMediaList] = useState([])
   const [mediaError, setMediaError] = useState('')
   const [mediaDeleteTarget, setMediaDeleteTarget] = useState(null) // { id, title }
   const [mediaDeleting, setMediaDeleting] = useState(false)
   const [mediaUploading, setMediaUploading] = useState(false)
+
+  // A "Warning" video needs an AQI category to trigger on — every category
+  // except "Good" (there's nothing to warn about when the air is good).
+  // Recomputed on every render rather than hoisted to module scope, since
+  // airQualityCategories() can hydrate from the server after this file loads.
+  const warningCategories = airQualityCategories()
+    .filter((c) => c.name !== 'Good')
+    .map((c) => c.name)
 
   useEffect(() => {
     const fetchMedia = async () => {
@@ -49,9 +60,18 @@ const WebBulletinBoard = () => {
     return false
   }
 
+  if (videoType === 'Warning' && !warningCategory) {
+    setMediaError('Choose which AQI category this warning video is for.')
+    return false
+  }
+
   const formData = new FormData()
   formData.append('title', videoFile.name)
   formData.append('video', videoFile)
+  formData.append('videoType', videoType)
+  if (videoType === 'Warning') {
+    formData.append('aqiCategory', warningCategory)
+  }
 
   setMediaUploading(true)
   try {
@@ -66,6 +86,8 @@ const WebBulletinBoard = () => {
     if (res.ok) {
       setMediaList(prev => [json, ...prev])
       setVideoFile(null)
+      setVideoType('Educational')
+      setWarningCategory('')
       return true
     } else {
       setMediaError(json.error || 'Upload failed.')
@@ -530,6 +552,39 @@ const handleUpdate = async () => {
             />
           </div>
 
+          <div className="label-row">
+            <label htmlFor="video-type">Video type</label>
+            <select
+              id="video-type"
+              value={videoType}
+              onChange={(e) => setVideoType(e.target.value)}
+              disabled={mediaUploading}
+              className="search-input"
+            >
+              <option value="Educational">Educational video</option>
+              <option value="Warning">Warning video</option>
+            </select>
+          </div>
+
+          {videoType === 'Warning' && (
+            <div className="label-row">
+              <label htmlFor="video-warning-category">Plays when AQI reaches *</label>
+              <select
+                id="video-warning-category"
+                value={warningCategory}
+                onChange={(e) => setWarningCategory(e.target.value)}
+                required
+                disabled={mediaUploading}
+                className="search-input"
+              >
+                <option value="" disabled>Choose a category…</option>
+                {warningCategories.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {mediaUploading && (
             <p style={{ marginTop: 10 }}>Uploading video, please wait…</p>
           )}
@@ -564,6 +619,20 @@ const handleUpdate = async () => {
           type="video/mp4"
         />
       </video>
+
+      {m.videoType === 'Warning' ? (
+        <span
+          className="media-type-badge"
+          style={{
+            color: CATEGORY_COLORS[m.aqiCategory] || '#94a3b8',
+            borderColor: CATEGORY_COLORS[m.aqiCategory] || '#94a3b8',
+          }}
+        >
+          Warning · {m.aqiCategory}
+        </span>
+      ) : (
+        <span className="media-type-badge media-type-badge-educational">Educational</span>
+      )}
 
       {isAdmin && (
         <button

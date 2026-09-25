@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Newspaper, Pin, Maximize2, Minimize2 } from 'lucide-react'
 import { useCachedFetch } from '../../hooks/useCachedFetch'
+import { useWarningVideos } from '../../hooks/useWarningVideos'
 import { useAutoScrollList } from '../../hooks/useAutoScrollList'
 import AnnouncementRow from '../AnnouncementRow'
 import AqiPreview from '../AqiPreview'
@@ -53,10 +54,20 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
   const listRef = useRef(null)
   useAutoScrollList(listRef, [announcementsData])
 
-  // ---------- Video stage (same public /api/media the kiosk and Educational
-  // Videos section use; autoplaying preview, no manual controls) ----------
+  // Ticker — same AQI-advisory scroller as the kiosk, same colour source.
+  const tickerAqi = headline?.live?.aqi ?? headline?.average?.aqi ?? null
+  const tickerAdvisory = aqiAdvisory(tickerAqi)
+  const tickerColor = tickerAdvisory?.color || '#94a3b8'
+  const tickerTextColor = tickerAdvisory
+    ? readableInsightColor(tickerAdvisory.color, false, 0x22 / 0xff)
+    : '#475569'
+  // ---------- Video stage (same public /api/media the kiosk uses; autoplaying
+  // preview, no manual controls). Educational videos rotate; a warning video
+  // takes over when the AQI enters its category, exactly like the kiosk (shared
+  // logic: hooks/useWarningVideos.js) ----------
   const [videos, setVideos] = useState([])
   const [videoIndex, setVideoIndex] = useState(0)
+  const videoRef = useRef(null)
   useEffect(() => {
     const fetchMedia = async () => {
       try {
@@ -69,9 +80,17 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
     }
     fetchMedia()
   }, [])
-  const hasVideos = videos.length > 0
-  const currentVideo = hasVideos ? videos[videoIndex] : null
-  const handleVideoEnded = () => setVideoIndex((i) => (i + 1) % videos.length)
+  const { educationalVideos, currentVideo, hasVideos, isWarning, endWarning } = useWarningVideos({
+    mediaList: videos,
+    category: tickerAdvisory?.category ?? null,
+    videoRef,
+    currentVideoIndex: videoIndex,
+    setCurrentVideoIndex: setVideoIndex,
+  })
+  const handleVideoEnded = () => {
+    if (endWarning()) return
+    if (educationalVideos.length > 1) setVideoIndex((i) => (i + 1) % educationalVideos.length)
+  }
 
   // ---------- Clock (same format as the kiosk header) ----------
   const [now, setNow] = useState(() => new Date())
@@ -90,13 +109,6 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
     : null
   const reportedForPreview = headline?.average ? { Aqi: headline.average.aqi } : null
 
-  // Ticker — same AQI-advisory scroller as the kiosk, same colour source.
-  const tickerAqi = headline?.live?.aqi ?? headline?.average?.aqi ?? null
-  const tickerAdvisory = aqiAdvisory(tickerAqi)
-  const tickerColor = tickerAdvisory?.color || '#94a3b8'
-  const tickerTextColor = tickerAdvisory
-    ? readableInsightColor(tickerAdvisory.color, false, 0x22 / 0xff)
-    : '#475569'
   const tickerSegments = []
   if (tickerAdvisory) {
     tickerSegments.push(`Air quality: AQI ${tickerAqi} (${tickerAdvisory.category})`)
@@ -116,7 +128,12 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
         className={`kiosk-root landing-board-panel ${isFullscreen ? 'kiosk-fullscreen' : ''}`}
         ref={panelRef}
       >
-        <div className="kiosk-header">
+        <div
+          className="kiosk-header"
+          style={tickerAdvisory
+            ? { background: `linear-gradient(${tickerColor}33, ${tickerColor}33), #ffffff` }
+            : undefined}
+        >
           <div className="kiosk-brand">
             <img src={bewAirLogo} alt="BewAir" width={40} height={40} />
             <span>BewAir</span>
@@ -140,16 +157,20 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
               <>
                 <video
                   key={currentVideo._id}
+                  ref={videoRef}
                   src={resolveMediaUrl(currentVideo.videoUrl)}
-                  className="kiosk-video"
+                  className={`kiosk-video ${isWarning ? 'kiosk-video-warning-fade' : ''}`}
                   autoPlay
                   muted
                   playsInline
-                  loop={videos.length <= 1}
-                  onEnded={videos.length > 1 ? handleVideoEnded : undefined}
+                  loop={!isWarning && educationalVideos.length <= 1}
+                  onEnded={handleVideoEnded}
                 />
                 {currentVideo.title && (
-                  <div className="kiosk-video-caption">{currentVideo.title}</div>
+                  <div className="kiosk-video-caption">
+                    {isWarning && <span className="kiosk-video-warning-tag">Warning</span>}
+                    {currentVideo.title}
+                  </div>
                 )}
               </>
             ) : (
