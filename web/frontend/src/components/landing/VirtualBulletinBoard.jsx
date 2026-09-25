@@ -62,7 +62,9 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
       try {
         const res = await fetch('/api/media')
         const json = await res.json()
-        if (res.ok && Array.isArray(json)) setVideos(json)
+        // Educational only — warning videos are reserved for the real kiosk's
+        // AQI-triggered interrupt, and would be misleading looping here.
+        if (res.ok && Array.isArray(json)) setVideos(json.filter((m) => m.videoType !== 'Warning'))
       } catch (err) {
         console.error('media:', err)
       }
