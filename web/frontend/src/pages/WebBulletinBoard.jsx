@@ -17,6 +17,8 @@ const WebBulletinBoard = () => {
  /* ------------------ EDUCATIONAL VIDEO -------------- */
 
   const [videoFile, setVideoFile] = useState(null)
+  const [videoTitle, setVideoTitle] = useState('')
+  const [titleEdited, setTitleEdited] = useState(false)
   const [videoType, setVideoType] = useState('Educational')
   const [warningCategory, setWarningCategory] = useState('')
   const [mediaList, setMediaList] = useState([])
@@ -46,7 +48,11 @@ const WebBulletinBoard = () => {
   }, [user])
 
       const handleFileChange = (e) => {
-      setVideoFile(e.target.files[0])
+      const file = e.target.files[0]
+      setVideoFile(file)
+      // Pre-fill the name from the file (minus its extension) until the admin
+      // types their own, so picking a different file after that doesn't wipe it.
+      if (!titleEdited) setVideoTitle(file ? file.name.replace(/.[^.]+$/, '') : '')
     }
 
     const handleUpload = async () => {
@@ -66,7 +72,7 @@ const WebBulletinBoard = () => {
   }
 
   const formData = new FormData()
-  formData.append('title', videoFile.name)
+  formData.append('title', videoTitle.trim() || videoFile.name)
   formData.append('video', videoFile)
   formData.append('videoType', videoType)
   if (videoType === 'Warning') {
@@ -86,6 +92,8 @@ const WebBulletinBoard = () => {
     if (res.ok) {
       setMediaList(prev => [json, ...prev])
       setVideoFile(null)
+      setVideoTitle('')
+      setTitleEdited(false)
       setVideoType('Educational')
       setWarningCategory('')
       return true
@@ -553,6 +561,20 @@ const handleUpdate = async () => {
           </div>
 
           <div className="label-row">
+            <label htmlFor="video-title">Video name</label>
+            <input
+              id="video-title"
+              type="text"
+              value={videoTitle}
+              onChange={(e) => { setVideoTitle(e.target.value); setTitleEdited(true) }}
+              placeholder="Defaults to the file name"
+              maxLength={100}
+              disabled={mediaUploading}
+              className="search-input"
+            />
+          </div>
+
+          <div className="label-row">
             <label htmlFor="video-type">Video type</label>
             <select
               id="video-type"
@@ -619,6 +641,8 @@ const handleUpdate = async () => {
           type="video/mp4"
         />
       </video>
+
+      <div className="media-card-title" title={m.title}>{m.title || 'Untitled'}</div>
 
       {m.videoType === 'Warning' ? (
         <span
