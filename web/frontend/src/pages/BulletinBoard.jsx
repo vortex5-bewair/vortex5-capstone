@@ -1,9 +1,10 @@
 // BulletinBoard.jsx — kiosk-style display: animation in the middle,
 // news/announcements + AQI preview on the right, scrolling ticker at the bottom.
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useLiveReadings } from '../hooks/useLiveReadings'
 import { useAutoScrollList } from '../hooks/useAutoScrollList'
+import { useWarningVideos } from '../hooks/useWarningVideos'
 import { Maximize2, Minimize2, Pause, Play, Newspaper, ChevronLeft, ChevronRight, Pin } from 'lucide-react'
 import bewAirLogo from '../assets/bewair_logo_black.png'
 import { aqiAdvisory, readableInsightColor } from '../utils/airQualityGuidance'
@@ -67,67 +68,6 @@ const BulletinBoard = () => {
     }
     fetchMedia()
   }, [user])
-
-  // ---------- Educational vs. Warning videos ----------
-  // Only Educational videos play in the normal rotation; Warning videos never
-  // appear there — they only play by interrupting it (see the effect below).
-  const educationalVideos = useMemo(
-    () => mediaList.filter((m) => m.videoType !== 'Warning'),
-    [mediaList]
-  )
-  // Newest video per category wins if more than one was uploaded for the same
-  // category — mediaList is already sorted newest-first by the API.
-  const warningByCategory = useMemo(() => {
-    const map = {}
-    for (const m of mediaList) {
-      if (m.videoType === 'Warning' && m.aqiCategory && !map[m.aqiCategory]) {
-        map[m.aqiCategory] = m
-      }
-    }
-    return map
-  }, [mediaList])
-
-  // ---------- Warning-video interrupt ----------
-  // When the live AQI enters a category with a matching Warning video, it
-  // replaces whatever Educational video is showing. savedPlaybackRef records
-  // exactly where to resume once the warning video ends; prevCategoryRef makes
-  // the trigger edge-based (on the transition INTO the category) instead of
-  // level-based, so the same warning doesn't replay on every tick while the
-  // AQI sits in that category. It's deliberately left untouched while a
-  // warning video is already playing, so a category change mid-playback (e.g.
-  // Fair -> Emergency) is still caught and triggers the right video once the
-  // current one finishes, instead of being silently absorbed.
-  const [interruptVideo, setInterruptVideo] = useState(null)
-  const savedPlaybackRef = useRef(null) // { index, time } while interrupted
-  const resumeSeekRef = useRef(null) // seconds to seek to once the resumed video is ready
-  const prevCategoryRef = useRef(null)
-
-  useEffect(() => {
-    if (interruptVideo) return // one warning video at a time; re-evaluate once it ends
-    const category = tickerAdvisory?.category ?? null
-    if (category === prevCategoryRef.current) return
-    prevCategoryRef.current = category
-
-    const warning = category ? warningByCategory[category] : null
-    if (!warning) return
-
-    // Deferred to a microtask, same shape as this file's other effects
-    // (fetch callbacks, the fullscreenchange listener) that only ever call
-    // setState from inside a nested callback rather than synchronously as
-    // the effect's first action — this is genuinely reacting to the live AQI
-    // feed (an external system), not mirroring a prop into state, but the
-    // lint rule can't tell those apart from the call shape alone.
-    queueMicrotask(() => {
-      savedPlaybackRef.current = {
-        index: currentVideoIndex,
-        time: videoRef.current?.currentTime || 0,
-      }
-      setInterruptVideo(warning)
-      // A warning video is safety-critical — it should play even if the
-      // kiosk's normal rotation was manually paused.
-      setIsPlaying(true)
-    })
-  }, [tickerAdvisory?.category, warningByCategory, interruptVideo, currentVideoIndex])
 
   // ---------- Fetch announcements ----------
   useEffect(() => {
@@ -193,13 +133,16 @@ const BulletinBoard = () => {
     }
   }
 
-  // interruptVideo, when set, takes over the stage entirely — the normal
-  // educational rotation (currentVideoIndex) keeps its place underneath but
-  // isn't what's rendered.
-  const hasVideos = !!interruptVideo || educationalVideos.length > 0
-  const currentVideo = interruptVideo
-    ? interruptVideo
-    : (educationalVideos.length > 0 ? educationalVideos[currentVideoIndex % educationalVideos.length] : null)
+  // Educational rotation + AQI-triggered warning videos (shared with the
+  // landing page's mini board — see hooks/useWarningVideos.js).
+  const { educationalVideos, currentVideo, hasVideos, isWarning, endWarning } = useWarningVideos({
+    mediaList,
+    category: tickerAdvisory?.category ?? null,
+    videoRef,
+    currentVideoIndex,
+    setCurrentVideoIndex,
+    setIsPlaying,
+  })
 
   // ---------- Autoplay watchdog ----------
   // Relying on the <video autoPlay> attribute alone is unreliable: on a cold
@@ -211,22 +154,12 @@ const BulletinBoard = () => {
   // they're far less likely to hit the same race. Retry play() explicitly
   // whenever the element becomes ready, and once more on an interval as a
   // last-resort self-heal since this kiosk runs unattended for hours.
-  //
-  // Also applies a pending resume seek (resumeSeekRef) — set when a warning
-  // video ends and hands playback back to the educational video it
-  // interrupted — once that video has loaded enough to be seekable.
   const currentVideoId = currentVideo?._id
   useEffect(() => {
     const video = videoRef.current
     if (!video || !isPlaying) return
 
-    const applyResumeSeek = () => {
-      if (resumeSeekRef.current != null && video.readyState >= 1) {
-        video.currentTime = resumeSeekRef.current
-        resumeSeekRef.current = null
-      }
-    }
-    const tryPlay = () => { applyResumeSeek(); video.play().catch(() => {}) }
+    const tryPlay = () => { video.play().catch(() => {}) }
     tryPlay()
     video.addEventListener('loadeddata', tryPlay)
     video.addEventListener('canplay', tryPlay)
@@ -244,18 +177,7 @@ const BulletinBoard = () => {
 
   // ---------- Video controls ----------
   const handleVideoEnded = () => {
-    if (interruptVideo) {
-      // The warning video finished — hand playback back to the educational
-      // video it interrupted, from exactly where that video was paused.
-      const saved = savedPlaybackRef.current
-      if (saved) {
-        resumeSeekRef.current = saved.time
-        if (saved.index !== currentVideoIndex) setCurrentVideoIndex(saved.index)
-      }
-      savedPlaybackRef.current = null
-      setInterruptVideo(null)
-      return
-    }
+    if (endWarning()) return
     if (educationalVideos.length > 0 && isPlaying) {
       setCurrentVideoIndex(i => (i + 1) % educationalVideos.length)
     }
@@ -324,7 +246,7 @@ const BulletinBoard = () => {
                 value={currentVideoIndex}
                 onChange={(e) => selectVideo(Number(e.target.value))}
                 aria-label="Choose video"
-                disabled={!!interruptVideo}
+                disabled={isWarning}
               >
                 {educationalVideos.map((m, i) => (
                   <option key={m._id || i} value={i}>
@@ -332,10 +254,10 @@ const BulletinBoard = () => {
                   </option>
                 ))}
               </select>
-              <button className="kiosk-ctrl-btn" onClick={goPrev} aria-label="Previous video" disabled={!!interruptVideo}>
+              <button className="kiosk-ctrl-btn" onClick={goPrev} aria-label="Previous video" disabled={isWarning}>
                 <ChevronLeft size={14}/>
               </button>
-              <button className="kiosk-ctrl-btn" onClick={goNext} aria-label="Next video" disabled={!!interruptVideo}>
+              <button className="kiosk-ctrl-btn" onClick={goNext} aria-label="Next video" disabled={isWarning}>
                 <ChevronRight size={14}/>
               </button>
             </>
@@ -343,7 +265,7 @@ const BulletinBoard = () => {
 
           {hasVideos && (
             <span className="kiosk-ctrl-status">
-              {interruptVideo
+              {isWarning
                 ? 'Playing warning video'
                 : `Video ${currentVideoIndex + 1} of ${educationalVideos.length}`}
             </span>
@@ -390,7 +312,7 @@ const BulletinBoard = () => {
                 key={currentVideo._id}
                 ref={videoRef}
                 src={resolveMediaUrl(currentVideo.videoUrl)}
-                className={`kiosk-video ${interruptVideo ? 'kiosk-video-warning-fade' : ''}`}
+                className={`kiosk-video ${isWarning ? 'kiosk-video-warning-fade' : ''}`}
                 autoPlay={isPlaying}
                 onEnded={handleVideoEnded}
                 playsInline
@@ -398,7 +320,7 @@ const BulletinBoard = () => {
               />
               {currentVideo.title && (
                 <div className="kiosk-video-caption">
-                  {interruptVideo && <span className="kiosk-video-warning-tag">Warning</span>}
+                  {isWarning && <span className="kiosk-video-warning-tag">Warning</span>}
                   {currentVideo.title}
                 </div>
               )}
