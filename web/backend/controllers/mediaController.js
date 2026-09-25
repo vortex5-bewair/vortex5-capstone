@@ -57,6 +57,44 @@ const createMedia = async (req, res) => {
   }
 }
 
+/* RENAME MEDIA */
+const MAX_TITLE_LENGTH = 100
+
+const updateMedia = async (req, res) => {
+  const { id } = req.params
+  const actor = req.user?.email || 'Unknown'
+  const title = typeof req.body.title === 'string' ? req.body.title.trim() : ''
+
+  if (!title) {
+    return res.status(400).json({ error: 'A video name is required.' })
+  }
+  if (title.length > MAX_TITLE_LENGTH) {
+    return res.status(400).json({ error: `A video name can be at most ${MAX_TITLE_LENGTH} characters.` })
+  }
+
+  try {
+    const media = await Media.findById(id)
+    if (!media) {
+      return res.status(404).json({ error: 'Media not found' })
+    }
+
+    const previous = media.title
+    media.title = title
+    await media.save()
+
+    await logAudit({
+      module: 'Bulletin Board',
+      action: `Video "${previous || 'Untitled'}" was renamed to "${title}"`,
+      user: actor
+    })
+
+    res.status(200).json(media)
+  } catch (error) {
+    console.log('UPDATE ERROR:', error)
+    res.status(500).json({ error: error.message })
+  }
+}
+
 /* DELETE MEDIA */
 const deleteMedia = async (req, res) => {
   const { id } = req.params
@@ -100,5 +138,6 @@ const deleteMedia = async (req, res) => {
 module.exports = {
   getMedia,
   createMedia,
+  updateMedia,
   deleteMedia
 }

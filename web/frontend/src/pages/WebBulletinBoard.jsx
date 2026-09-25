@@ -17,11 +17,16 @@ const WebBulletinBoard = () => {
  /* ------------------ EDUCATIONAL VIDEO -------------- */
 
   const [videoFile, setVideoFile] = useState(null)
+  const [videoTitle, setVideoTitle] = useState('')
+  const [titleEdited, setTitleEdited] = useState(false)
   const [videoType, setVideoType] = useState('Educational')
   const [warningCategory, setWarningCategory] = useState('')
   const [mediaList, setMediaList] = useState([])
   const [mediaError, setMediaError] = useState('')
   const [mediaDeleteTarget, setMediaDeleteTarget] = useState(null) // { id, title }
+  const [renameTarget, setRenameTarget] = useState(null) // { id, title }
+  const [renameError, setRenameError] = useState('')
+  const [renaming, setRenaming] = useState(false)
   const [mediaDeleting, setMediaDeleting] = useState(false)
   const [mediaUploading, setMediaUploading] = useState(false)
 
@@ -46,7 +51,11 @@ const WebBulletinBoard = () => {
   }, [user])
 
       const handleFileChange = (e) => {
-      setVideoFile(e.target.files[0])
+      const file = e.target.files[0]
+      setVideoFile(file)
+      // Pre-fill the name from the file (minus its extension) until the admin
+      // types their own, so picking a different file after that doesn't wipe it.
+      if (!titleEdited) setVideoTitle(file ? file.name.replace(/.[^.]+$/, '') : '')
     }
 
     const handleUpload = async () => {
@@ -66,7 +75,7 @@ const WebBulletinBoard = () => {
   }
 
   const formData = new FormData()
-  formData.append('title', videoFile.name)
+  formData.append('title', videoTitle.trim() || videoFile.name)
   formData.append('video', videoFile)
   formData.append('videoType', videoType)
   if (videoType === 'Warning') {
@@ -86,6 +95,8 @@ const WebBulletinBoard = () => {
     if (res.ok) {
       setMediaList(prev => [json, ...prev])
       setVideoFile(null)
+      setVideoTitle('')
+      setTitleEdited(false)
       setVideoType('Educational')
       setWarningCategory('')
       return true
@@ -101,6 +112,38 @@ const WebBulletinBoard = () => {
   }
 }
 const [showMediaModal, setShowMediaModal] = useState(false)
+
+const handleRename = async () => {
+  if (renaming || !renameTarget) return
+  const title = renameTarget.title.trim()
+  if (!title) {
+    setRenameError('A video name is required.')
+    return
+  }
+  setRenaming(true)
+  setRenameError('')
+  try {
+    const res = await fetch(`/api/media/${renameTarget.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${user?.token}`
+      },
+      body: JSON.stringify({ title })
+    })
+    const json = await res.json()
+    if (res.ok) {
+      setMediaList(prev => prev.map(m => (m._id === renameTarget.id ? json : m)))
+      setRenameTarget(null)
+    } else {
+      setRenameError(json.error || 'Rename failed.')
+    }
+  } catch (err) {
+    setRenameError(err.message || 'Rename failed.')
+  } finally {
+    setRenaming(false)
+  }
+}
 
 /* announcements */
 
@@ -553,6 +596,20 @@ const handleUpdate = async () => {
           </div>
 
           <div className="label-row">
+            <label htmlFor="video-title">Video name</label>
+            <input
+              id="video-title"
+              type="text"
+              value={videoTitle}
+              onChange={(e) => { setVideoTitle(e.target.value); setTitleEdited(true) }}
+              placeholder="Defaults to the file name"
+              maxLength={100}
+              disabled={mediaUploading}
+              className="search-input"
+            />
+          </div>
+
+          <div className="label-row">
             <label htmlFor="video-type">Video type</label>
             <select
               id="video-type"
@@ -620,6 +677,19 @@ const handleUpdate = async () => {
         />
       </video>
 
+      <div className="media-card-heading">
+        <div className="media-card-title" title={m.title}>{m.title || 'Untitled'}</div>
+        {isAdmin && (
+          <button
+            className="icon-btn edit-btn"
+            onClick={() => { setRenameError(''); setRenameTarget({ id: m._id, title: m.title || '' }) }}
+            aria-label={`Rename "${m.title || 'Untitled'}"`}
+          >
+            <Pencil size={16} />
+          </button>
+        )}
+      </div>
+
       {m.videoType === 'Warning' ? (
         <span
           className="media-type-badge"
@@ -645,6 +715,53 @@ const handleUpdate = async () => {
     </div>
   ))}
 </div>
+
+{renameTarget && isAdmin && (
+  <div className="modal-overlay">
+    <div className="modal-card">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleRename()
+        }}
+      >
+        <div className="modal-header">
+          <h3>Rename Video</h3>
+        </div>
+        <div className="modal-body">
+          <div className="label-row">
+            <label htmlFor="rename-video-title">Video name</label>
+            <input
+              id="rename-video-title"
+              type="text"
+              value={renameTarget.title}
+              onChange={(e) => setRenameTarget(t => ({ ...t, title: e.target.value }))}
+              maxLength={100}
+              required
+              autoFocus
+              disabled={renaming}
+              className="search-input"
+            />
+          </div>
+          {renameError && <p style={{ color: 'red', marginTop: 10 }}>{renameError}</p>}
+        </div>
+        <div className="modal-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setRenameTarget(null)}
+            disabled={renaming}
+          >
+            Cancel
+          </button>
+          <button className="btn btn-primary" disabled={renaming}>
+            {renaming ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
 
 {mediaDeleteTarget && (
   <div className="modal-overlay">

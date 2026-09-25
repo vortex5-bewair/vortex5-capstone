@@ -5,6 +5,7 @@ const { requireAuth, requireAdmin } = require('../middleware/requireAuth')
 const {
   getMedia,
   createMedia,
+  updateMedia,
   deleteMedia
 } = require('../controllers/mediaController')
 
@@ -23,6 +24,7 @@ const uploadVideo = (req, res, next) => {
 
 router.get('/',       getMedia)
 router.post('/',      requireAuth, requireAdmin, uploadVideo, createMedia)
+router.put('/:id',    requireAuth, requireAdmin, updateMedia)
 router.delete('/:id', requireAuth, requireAdmin, deleteMedia)
 
 module.exports = router
