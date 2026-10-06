@@ -40,7 +40,9 @@ function decodeFrame(hexFrame) {
     PM10:         word(6),
     // word(7..12) particle counts — skipped
     TVOC:         word(13),                 // µg/m³
-    Temperature:  (word(14) - 450) / 10,    // °C, supports negative values
+    // Offset recalibrated 500 (was 450, uncited since the file's first
+    // commit) against a reference Sonoff temperature sensor.
+    Temperature:  (word(14) - 500) / 10,    // °C, supports negative values
     Humidity:     word(15) / 10,            // %RH
     CO2:          word(16),                 // ppm
     Formaldehyde: word(17)                  // µg/m³
