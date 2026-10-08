@@ -9,12 +9,52 @@ const { PM25_BREAKS, PM10_BREAKS } = require('../config/airQualityBands')
 
 function aqiFromConcentration(c, breaks) {
   if (c == null || Number.isNaN(c) || c < 0) return 0
+  // Matched by upper bound only, ascending order — the same gap-free pattern
+  // config/airQualityBands.js already uses for bandFor() ("value <= b.max",
+  // no lower-bound check). The published DENR/EPA breakpoint tables leave
+  // real gaps between a band's upper edge and the next band's lower edge:
+  // PM2.5's own bands are written one-tenth apart (...55.1 -> 55, 55.1...)
+  // which still misses every value strictly between, and PM10's bands sit on
+  // bare adjacent integers (54 -> 55) with nothing in between at all. A value
+  // landing in one of those gaps used to match no band and silently fall
+  // through to the final "off the chart" 500 below — AQI pinned at its worst
+  // possible reading for an entirely ordinary concentration.
+  //
+  // Checking only c <= bpH removes the gap by construction: every value from
+  // 0 up to the top published breakpoint matches exactly one band.
+  //
+  // A value that falls strictly inside a gap (below the matched band's own
+  // published bpL) is bridged as a straight line between two real points:
+  // (floor, floorIndex) — exactly where the PREVIOUS band's own line ended —
+  // and (bpL, iL) — exactly where this band's own line begins. That is the
+  // only bridge that is guaranteed to meet both neighbours exactly, so the
+  // index is continuous and never decreases as concentration rises, right
+  // through what used to be a hole in the table.
+  //
+  // (Bridging from floor using the MATCHED band's own bpH/iH endpoint instead
+  // — i.e. that band's real formula, just evaluated a bit early — was tried
+  // first and rejected: band5 and band6 of PM2.5 have different slopes, so
+  // that formula does not actually pass through band6's own real start point
+  // (91, 301). The index climbed smoothly through the gap but then dropped
+  // sharply the instant c reached the official bpL and the real formula took
+  // over — a self-inflicted discontinuity at exactly the one point that used
+  // to be a real, correct boundary.)
+  //
+  // A value actually inside a band's own published range is untouched: it
+  // still gets that band's own real bpL/bpH/iL/iH, exactly as published.
+  let floor = 0
+  let floorIndex = 0
   for (const [bpL, bpH, iL, iH] of breaks) {
-    if (c >= bpL && c <= bpH) {
-      return Math.round(((iH - iL) / (bpH - bpL)) * (c - bpL) + iL)
+    if (c <= bpH) {
+      if (c >= bpL) {
+        return Math.round(((iH - iL) / (bpH - bpL)) * (c - bpL) + iL)
+      }
+      return Math.round(((iL - floorIndex) / (bpL - floor)) * (c - floor) + floorIndex)
     }
+    floor = bpH
+    floorIndex = iH
   }
-  return 500 // off the chart
+  return 500 // genuinely beyond the top of the published chart
 }
 
 // Returns the higher of the two sub-indexes — standard AQI convention, kept
