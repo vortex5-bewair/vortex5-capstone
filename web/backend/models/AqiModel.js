@@ -17,8 +17,19 @@ const AqiSchema = new Schema({
     // does not have.
     aqiBasis:     { type: String, enum: ['nowcast', 'instant'] },
     PM1:          { type: Number, required: true },
+    // Corrected values (config/sensorCalibration.js subtracted off, clamped
+    // to 0). rawPM25/rawPM10 are the values exactly as decoded, kept so the
+    // correction can be re-derived or revised later. Both optional: rows
+    // written before per-device calibration landed have neither.
     PM25:         { type: Number, required: true },
     PM10:         { type: Number, required: true },
+    rawPM25:      { type: Number },
+    rawPM10:      { type: Number },
+    // CALIBRATION_VERSION from config/sensorCalibration.js if this row's
+    // device had an offset on file when it was written, else null — a device
+    // with no reference measurement yet, or a row from before calibration
+    // existed at all (same null, can't be told apart from the flag alone).
+    calibrationVersion: { type: Number, default: null },
     TVOC:         { type: Number, required: true }, // µg/m³
     CO2:          { type: Number, required: true }, // ppm
     Formaldehyde: { type: Number, required: true }, // µg/m³

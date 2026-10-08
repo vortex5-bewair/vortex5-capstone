@@ -4,6 +4,7 @@ const AqiModel = require('../models/AqiModel')
 const Device = require('../models/DeviceModel')
 const { decodeFrame } = require('../utils/sensorDecoder')
 const { computeAqi, nowcast, NOWCAST_HOURS } = require('../utils/aqiCalculator')
+const { calibrate } = require('../config/sensorCalibration')
 // Broker and topic layout live in config/mqtt.js, shared with the staging
 // telemetry simulator. Every topic is scoped by MQTT_TOPIC_PREFIX (default
 // `bewair`, which is what production and the real firmware use).
@@ -42,7 +43,12 @@ const LIVE_EVICT_SWEEP_MS = 60 * 1000
 const STREAM_MAX_CLIENTS = Number(process.env.AQI_STREAM_MAX_CLIENTS || 50)
 let streamClientCount = 0
 
-const METRIC_FIELDS = ['PM1', 'PM25', 'PM10', 'TVOC', 'CO2', 'Formaldehyde', 'Temperature', 'Humidity']
+// rawPM25/rawPM10 ride the same sum/average machinery as every other field
+// below (zeroSums/averageOf/averageWindow all just loop this array) — they
+// are the decoded PM2.5/PM10 before config/sensorCalibration.js's per-device
+// offset is subtracted, kept alongside the corrected PM25/PM10 so a reading
+// can be told apart from one written before calibration existed.
+const METRIC_FIELDS = ['PM1', 'PM25', 'PM10', 'rawPM25', 'rawPM10', 'TVOC', 'CO2', 'Formaldehyde', 'Temperature', 'Humidity']
 const DECIMAL_FIELDS = new Set(['Temperature', 'Humidity'])
 
 // deviceId -> { sums, count, lastWrite, lastSeenWrite }
@@ -187,12 +193,25 @@ function start() {
       return
     }
 
+    // Per-device dust calibration, applied right here so every downstream
+    // consumer — the live/instant path below and the persisted 30s average —
+    // sees already-corrected PM2.5/PM10 without having to know calibration
+    // exists. PM1 and every other field pass through calibrate() untouched.
+    const cal = calibrate(deviceId, metrics)
+    metrics.PM25 = cal.PM25
+    metrics.PM10 = cal.PM10
+    metrics.rawPM25 = cal.rawPM25
+    metrics.rawPM10 = cal.rawPM10
+
     const now = Date.now()
     let buf = buffers.get(deviceId)
     if (!buf) {
-      buf = { sums: zeroSums(), count: 0, lastWrite: now, lastSeenWrite: 0 }
+      buf = { sums: zeroSums(), count: 0, lastWrite: now, lastSeenWrite: 0, calibrationVersion: null }
       buffers.set(deviceId, buf)
     }
+    // Constant for the life of a device's entry in the calibration table, so
+    // this just keeps overwriting itself with the same value each frame.
+    buf.calibrationVersion = cal.calibrationVersion
 
     for (const f of METRIC_FIELDS) buf.sums[f] += Number(metrics[f]) || 0
     buf.count++
@@ -278,6 +297,7 @@ function start() {
           Aqi: reported,
           AqiInstant: instant,
           aqiBasis: basis,
+          calibrationVersion: buf.calibrationVersion,
           ...avg
         })
       } catch (err) {

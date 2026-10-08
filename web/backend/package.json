@@ -9,7 +9,8 @@
     "dev": "nodemon server.js",
     "db:backup": "node scripts/backup-db.js",
     "db:restore": "node scripts/backup-db.js restore",
-    "simulate:telemetry": "node scripts/simulate-telemetry.js"
+    "simulate:telemetry": "node scripts/simulate-telemetry.js",
+    "test:unit": "node --test test/"
   },
   "keywords": [],
   "author": "",
