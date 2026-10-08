@@ -155,7 +155,7 @@ function encodeFrame(m) {
   w[10] = m.PM25 * 0.2
   w[11] = m.PM25 * 0.05
   w[12] = m.TVOC
-  w[13] = m.Temperature * 10 + 450   // decoder: (word - 450) / 10
+  w[13] = m.Temperature * 10 + 500   // decoder: (word - 500) / 10
   w[14] = m.Humidity * 10            // decoder: word / 10
   w[15] = m.CO2
   w[16] = m.Formaldehyde
