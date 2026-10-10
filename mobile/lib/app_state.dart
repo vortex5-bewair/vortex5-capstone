@@ -9,7 +9,6 @@ import 'package:vortex5_application_2/models/sensor_device.dart';
 import 'package:vortex5_application_2/models/user_session.dart';
 import 'package:vortex5_application_2/services/air_quality_bands.dart';
 import 'package:vortex5_application_2/services/local_storage_service.dart';
-import 'package:vortex5_application_2/services/notification_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState();
@@ -17,9 +16,9 @@ class AppState extends ChangeNotifier {
   static const _settingsKey = 'app_alert_settings';
 
   // Reading per deviceId — populated from /api/aqi/latest. This is the
-  // 12-hour reported figure; alerting keys off it exclusively (see
-  // _rebuildAlerts), same principle as the web dashboard: alerts never fire
-  // off a single live sample.
+  // 12-hour reported figure, the same principle the web dashboard uses:
+  // the threshold check on the Alerts page reads this rather than a single
+  // live sample.
   final Map<String, SensorReadings> _readingsBySensorId = {};
 
   // Per-frame live readings per deviceId — populated from /api/aqi/live on
@@ -38,20 +37,14 @@ class AppState extends ChangeNotifier {
   // Sensors fetched from /api/device.
   List<SensorDevice> _sensors = [];
 
-  final List<AlertItem> _alerts = [];
-
   List<AlertItem> _alertHistory = [];
   final Set<String> _readHistoryKeys = {};
 
   String? _refreshError;
   String _activeSensorId = '';
-  // Tracks the STORED (12-hour reported) reading only — used to decide when
-  // to push an "Air quality updated" notification. Deliberately not exposed;
-  // the public aqi/aqiLabel getters below read the live reading instead.
-  int _reportedAqi = 0;
-  String _reportedAqiLabel = '--';
+  // Fallback for the `lastUpdated` getter before the first live frame arrives
+  // — set from the stored (12-hour reported) reading in [_syncCurrentReading].
   DateTime _lastUpdated = DateTime.now();
-  bool _hasShownPopup = false;
   bool _notificationsEnabled = true;
 
   // Alert limits. These used to be hardcoded per install (100 / 40 / 1000) and
@@ -107,7 +100,6 @@ class AppState extends ChangeNotifier {
   int get aqi => _activeLive?.aqiInstant ?? 0;
   String get aqiLabel => _activeLive?.aqiLabel ?? '--';
   DateTime get lastUpdated => _activeLive?.receivedAt ?? _lastUpdated;
-  List<AlertItem> get alerts => List.unmodifiable(_alerts);
   List<AlertItem> get alertHistory => List.unmodifiable(_alertHistory);
   List<SensorDevice> get sensors => List.unmodifiable(_sensors);
   double get aqiThreshold => _aqiThreshold;
@@ -122,7 +114,6 @@ class AppState extends ChangeNotifier {
   bool get notificationsEnabled => _notificationsEnabled;
   int get unreadAlertCount => _alertHistory.where((a) => !a.isRead).length;
   bool get hasUnreadAlerts => unreadAlertCount > 0;
-  bool get hasShownPopup => _hasShownPopup;
   bool get hasAnyDevice => _sensors.isNotEmpty;
   // Only meaningful to show prominently when there's no data yet — a
   // transient failure on a background poll after a successful initial load
@@ -466,8 +457,7 @@ class AppState extends ChangeNotifier {
       }
 
       _refreshError = null;
-      _syncCurrentReading(pushAlert: false);
-      _rebuildAlerts();
+      _syncCurrentReading();
       notifyListeners();
     } catch (e) {
       // Network/DNS error — keep last known state, but expose the failure so
@@ -532,7 +522,6 @@ class AppState extends ChangeNotifier {
     _pm25Threshold = pm25Threshold;
     _co2Threshold = co2Threshold;
     _notificationsEnabled = notificationsEnabled;
-    _rebuildAlerts();
     await _persistSettings();
     notifyListeners();
   }
@@ -656,101 +645,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void markPopupShown() {
-    _hasShownPopup = true;
-  }
-
-  void _syncCurrentReading({bool pushAlert = true}) {
+  // Keeps [_lastUpdated] current as the fallback [lastUpdated] reads before
+  // the first live frame for this sensor arrives.
+  void _syncCurrentReading() {
     final reading = _readingsBySensorId[_activeSensorId];
-    if (reading == null) {
-      _reportedAqi = 0;
-      _reportedAqiLabel = '--';
-      return;
-    }
-
-    final previousLabel = _reportedAqiLabel;
-    _reportedAqi = reading.aqi;
-    _reportedAqiLabel = reading.aqiLabel;
+    if (reading == null) return;
     _lastUpdated = reading.updatedAt;
-
-    if (pushAlert &&
-        _notificationsEnabled &&
-        previousLabel != _reportedAqiLabel &&
-        previousLabel != '--' &&
-        previousLabel.isNotEmpty) {
-      _alerts.insert(
-        0,
-        AlertItem(
-          title: 'Air quality updated',
-          message:
-              '${activeSensor.room} is now $_reportedAqiLabel with AQI $_reportedAqi.',
-          type: AlertType.aqi,
-          createdAt: DateTime.now(),
-        ),
-      );
-      _hasShownPopup = false;
-    }
-
-    _rebuildAlerts(keepManualAlerts: true);
-  }
-
-  void _rebuildAlerts({bool keepManualAlerts = false}) {
-    final carried = keepManualAlerts
-        ? _alerts.where((alert) => alert.type == AlertType.reminder).toList()
-        : <AlertItem>[];
-
-    final generated = <AlertItem>[];
-
-    for (final sensor in _sensors) {
-      final reading = _readingsBySensorId[sensor.id];
-      if (reading == null) continue;
-
-      final triggered = <String>[];
-      if (reading.aqi >= _aqiThreshold) {
-        triggered.add(
-          'AQI ${reading.aqi} exceeds ${_aqiThreshold.toStringAsFixed(0)}',
-        );
-      }
-      if (reading.pm25 >= _pm25Threshold) {
-        triggered.add(
-          'PM2.5 ${reading.pm25.toStringAsFixed(1)} exceeds ${_pm25Threshold.toStringAsFixed(0)}',
-        );
-      }
-      if (reading.co2 >= _co2Threshold) {
-        triggered.add(
-          'CO2 ${reading.co2.toStringAsFixed(0)} exceeds ${_co2Threshold.toStringAsFixed(0)}',
-        );
-      }
-
-      if (triggered.isEmpty) continue;
-
-      final level = triggered.length >= 2
-          ? 'High Alert'
-          : reading.aqi >= 150
-              ? 'High Alert'
-              : 'Warning';
-
-      generated.add(
-        AlertItem(
-          title: '$level - ${sensor.room}',
-          message: triggered.join(' | '),
-          type: AlertType.aqi,
-          createdAt: sensor.lastUpdated,
-          isRead: false,
-        ),
-      );
-    }
-
-    _alerts
-      ..clear()
-      ..addAll(generated)
-      ..addAll(
-        carried.isNotEmpty
-            ? carried
-            : NotificationService.getMockAlerts().where(
-                (a) => a.type == AlertType.reminder,
-              ),
-      );
   }
 
   void _markOverride(String key, double value, double? serverValue) {
