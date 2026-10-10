@@ -61,6 +61,7 @@ class _ProvisioningScanPageState extends State<ProvisioningScanPage> {
 
     try {
       final granted = await _ensurePermissions();
+      if (!mounted) return;
       if (!granted) {
         setState(() => _scanning = false);
         return;
