@@ -7,7 +7,7 @@ import { useAutoScrollList } from '../hooks/useAutoScrollList'
 import { useWarningVideos } from '../hooks/useWarningVideos'
 import { Maximize2, Minimize2, Pause, Play, Newspaper, ChevronLeft, ChevronRight, Pin } from 'lucide-react'
 import bewAirLogo from '../assets/bewair_logo_black.png'
-import { aqiAdvisory, readableInsightColor } from '../utils/airQualityGuidance'
+import { aqiAdvisory, readableInsightColor, componentInsight } from '../utils/airQualityGuidance'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
 import { ANNOUNCEMENT_CATEGORY_COLORS } from '../utils/announcementColors'
 import AnnouncementRow from '../components/AnnouncementRow'
@@ -54,6 +54,15 @@ const BulletinBoard = () => {
   const tickerTextColor = tickerAdvisory
     ? readableInsightColor(tickerAdvisory.color, false, 0x22 / 0xff)
     : '#475569'
+
+  // Same fallback (live stream, else the polled snapshot) as the AQI figure
+  // above, for the warning-video trigger — Humidity/Temperature only need to
+  // know whether the current reading is outside its healthy band, not which
+  // band exactly (see hooks/useWarningVideos.js).
+  const liveTemperature = freshestLive ? freshestLive.metrics?.Temperature : aqiData?.Temperature
+  const liveHumidity = freshestLive ? freshestLive.metrics?.Humidity : aqiData?.Humidity
+  const temperatureUnhealthy = !(componentInsight('temp', liveTemperature)?.ok ?? true)
+  const humidityUnhealthy = !(componentInsight('humidity', liveHumidity)?.ok ?? true)
 
   // ---------- Fetch media ----------
   useEffect(() => {
@@ -133,11 +142,13 @@ const BulletinBoard = () => {
     }
   }
 
-  // Educational rotation + AQI-triggered warning videos (shared with the
-  // landing page's mini board — see hooks/useWarningVideos.js).
+  // Educational rotation + AQI/Humidity/Temperature-triggered warning videos
+  // (shared with the landing page's mini board — see hooks/useWarningVideos.js).
   const { educationalVideos, currentVideo, hasVideos, isWarning, endWarning } = useWarningVideos({
     mediaList,
-    category: tickerAdvisory?.category ?? null,
+    aqiCategory: tickerAdvisory?.category ?? null,
+    humidityUnhealthy,
+    temperatureUnhealthy,
     videoRef,
     currentVideoIndex,
     setCurrentVideoIndex,

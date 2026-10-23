@@ -1273,6 +1273,14 @@ input, select {
   cursor: pointer;
 }
 
+/* Short explanatory text in place of a control — e.g. the warning-video
+   trigger when no sub-category picker applies. */
+.field-hint {
+  margin: -6px 0 14px;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
 /* Existing Announcements table — pin marker before a pinned row's title. */
 .announcement-title-cell {
   display: inline-flex;
