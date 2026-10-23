@@ -1,0 +1,39 @@
+name: Keep backend awake
+
+# Render's free tier spins the web service down after ~15 minutes with no
+# requests, and the next request then pays a 30-60s cold-start penalty —
+# which is what made uploaded bulletin-board videos look like they'd
+# "disappeared" (the admin page's video list failed to load while the
+# backend was waking up, not an actual deletion; see git history around
+# web/backend/controllers/mediaController.js for the investigation).
+#
+# Pinging the health endpoint well inside that 15-minute window keeps the
+# service from ever going idle.
+#
+# Caveats:
+# - GitHub does not guarantee exact timing on scheduled workflows; runs can
+#   be delayed a few minutes during platform load, though that's still well
+#   inside Render's 15-minute idle window.
+# - GitHub automatically disables scheduled workflows after 60 days with no
+#   commits to the repo. If this project goes quiet for a while, re-enable it
+#   from the Actions tab (Actions -> Keep backend awake -> ... -> Enable workflow).
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://vortex5-capstone.onrender.com/api/health)
+          echo "health check responded $code"
+          # 503 still means the service is awake and responding (it only
+          # reflects Mongo being briefly down) — only a request that never
+          # completes at all should fail this job.
+          if [ -z "$code" ] || [ "$code" = "000" ]; then
+            echo "::error::backend did not respond"
+            exit 1
+          fi
