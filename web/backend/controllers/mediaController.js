@@ -4,6 +4,7 @@ const logAudit = require('../utils/logAudit')
 const { AQI_CATEGORIES } = require('../config/airQualityBands')
 
 const WARNING_CATEGORIES = AQI_CATEGORIES.filter((c) => c.name !== 'Good').map((c) => c.name)
+const WARNING_PARAMETERS = ['AQI', 'Humidity', 'Temperature']
 
 /* GET ALL MEDIA */
 const getMedia = async (req, res) => {
@@ -25,7 +26,11 @@ const createMedia = async (req, res) => {
       return res.status(400).json({ error: 'No video file uploaded' })
     }
 
-    if (videoType === 'Warning' && !WARNING_CATEGORIES.includes(req.body.aqiCategory)) {
+    const warningParameter = WARNING_PARAMETERS.includes(req.body.warningParameter)
+      ? req.body.warningParameter
+      : 'AQI'
+
+    if (videoType === 'Warning' && warningParameter === 'AQI' && !WARNING_CATEGORIES.includes(req.body.aqiCategory)) {
       return res.status(400).json({
         error: `A warning video needs an AQI category (one of: ${WARNING_CATEGORIES.join(', ')}).`
       })
@@ -38,14 +43,17 @@ const createMedia = async (req, res) => {
       videoUrl: req.file.path,
       publicId: req.file.filename,
       videoType,
-      aqiCategory: videoType === 'Warning' ? req.body.aqiCategory : null,
+      warningParameter: videoType === 'Warning' ? warningParameter : null,
+      aqiCategory: videoType === 'Warning' && warningParameter === 'AQI' ? req.body.aqiCategory : null,
     })
 
     // Add audit log for upload
     await logAudit({
       module: 'Bulletin Board',
       action: videoType === 'Warning'
-        ? `Warning video "${title || 'Untitled'}" was uploaded for "${media.aqiCategory}"`
+        ? (warningParameter === 'AQI'
+          ? `Warning video "${title || 'Untitled'}" was uploaded for AQI "${media.aqiCategory}"`
+          : `Warning video "${title || 'Untitled'}" was uploaded for ${warningParameter}`)
         : `Video "${title || 'Untitled'}" was uploaded`,
       user: actor
     })

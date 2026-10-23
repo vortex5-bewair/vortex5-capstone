@@ -6,7 +6,7 @@ import { useAutoScrollList } from '../../hooks/useAutoScrollList'
 import AnnouncementRow from '../AnnouncementRow'
 import AqiPreview from '../AqiPreview'
 import { ANNOUNCEMENT_CATEGORY_COLORS } from '../../utils/announcementColors'
-import { aqiAdvisory, readableInsightColor } from '../../utils/airQualityGuidance'
+import { aqiAdvisory, readableInsightColor, componentInsight } from '../../utils/airQualityGuidance'
 import { PARTNER_SCHOOL } from '../../utils/partnerSchool'
 import { resolveMediaUrl } from '../../utils/resolveMediaUrl'
 import bewAirLogo from '../../assets/bewair_logo_black.png'
@@ -61,10 +61,17 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
   const tickerTextColor = tickerAdvisory
     ? readableInsightColor(tickerAdvisory.color, false, 0x22 / 0xff)
     : '#475569'
+
+  // Same public-headline metrics the AQI panel already uses, graded for the
+  // warning-video trigger below — only whether each is outside its healthy
+  // band matters here, not which specific level (see hooks/useWarningVideos.js).
+  const temperatureUnhealthy = !(componentInsight('temp', headline?.metrics?.temp)?.ok ?? true)
+  const humidityUnhealthy = !(componentInsight('humidity', headline?.metrics?.humidity)?.ok ?? true)
+
   // ---------- Video stage (same public /api/media the kiosk uses; autoplaying
   // preview, no manual controls). Educational videos rotate; a warning video
-  // takes over when the AQI enters its category, exactly like the kiosk (shared
-  // logic: hooks/useWarningVideos.js) ----------
+  // takes over when a tracked reading reaches an unhealthy level, exactly
+  // like the kiosk (shared logic: hooks/useWarningVideos.js) ----------
   const [videos, setVideos] = useState([])
   const [videoIndex, setVideoIndex] = useState(0)
   const videoRef = useRef(null)
@@ -82,7 +89,9 @@ const VirtualBulletinBoard = ({ data, loaded, error }) => {
   }, [])
   const { educationalVideos, currentVideo, hasVideos, isWarning, endWarning } = useWarningVideos({
     mediaList: videos,
-    category: tickerAdvisory?.category ?? null,
+    aqiCategory: tickerAdvisory?.category ?? null,
+    humidityUnhealthy,
+    temperatureUnhealthy,
     videoRef,
     currentVideoIndex: videoIndex,
     setCurrentVideoIndex: setVideoIndex,

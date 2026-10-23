@@ -20,6 +20,7 @@ const WebBulletinBoard = () => {
   const [videoTitle, setVideoTitle] = useState('')
   const [titleEdited, setTitleEdited] = useState(false)
   const [videoType, setVideoType] = useState('Educational')
+  const [warningParameter, setWarningParameter] = useState('AQI')
   const [warningCategory, setWarningCategory] = useState('')
   const [mediaList, setMediaList] = useState([])
   const [mediaError, setMediaError] = useState('')
@@ -69,7 +70,7 @@ const WebBulletinBoard = () => {
     return false
   }
 
-  if (videoType === 'Warning' && !warningCategory) {
+  if (videoType === 'Warning' && warningParameter === 'AQI' && !warningCategory) {
     setMediaError('Choose which AQI category this warning video is for.')
     return false
   }
@@ -79,7 +80,10 @@ const WebBulletinBoard = () => {
   formData.append('video', videoFile)
   formData.append('videoType', videoType)
   if (videoType === 'Warning') {
-    formData.append('aqiCategory', warningCategory)
+    formData.append('warningParameter', warningParameter)
+    if (warningParameter === 'AQI') {
+      formData.append('aqiCategory', warningCategory)
+    }
   }
 
   setMediaUploading(true)
@@ -98,6 +102,7 @@ const WebBulletinBoard = () => {
       setVideoTitle('')
       setTitleEdited(false)
       setVideoType('Educational')
+      setWarningParameter('AQI')
       setWarningCategory('')
       return true
     } else {
@@ -624,22 +629,45 @@ const handleUpdate = async () => {
           </div>
 
           {videoType === 'Warning' && (
-            <div className="label-row">
-              <label htmlFor="video-warning-category">Plays when AQI reaches *</label>
-              <select
-                id="video-warning-category"
-                value={warningCategory}
-                onChange={(e) => setWarningCategory(e.target.value)}
-                required
-                disabled={mediaUploading}
-                className="search-input"
-              >
-                <option value="" disabled>Choose a category…</option>
-                {warningCategories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div className="label-row">
+                <label htmlFor="video-warning-parameter">Plays when</label>
+                <select
+                  id="video-warning-parameter"
+                  value={warningParameter}
+                  onChange={(e) => setWarningParameter(e.target.value)}
+                  disabled={mediaUploading}
+                  className="search-input"
+                >
+                  <option value="AQI">AQI</option>
+                  <option value="Humidity">Humidity</option>
+                  <option value="Temperature">Temperature</option>
+                </select>
+              </div>
+
+              {warningParameter === 'AQI' ? (
+                <div className="label-row">
+                  <label htmlFor="video-warning-category">Reaches *</label>
+                  <select
+                    id="video-warning-category"
+                    value={warningCategory}
+                    onChange={(e) => setWarningCategory(e.target.value)}
+                    required
+                    disabled={mediaUploading}
+                    className="search-input"
+                  >
+                    <option value="" disabled>Choose a category…</option>
+                    {warningCategories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <p className="field-hint">
+                  Plays when {warningParameter.toLowerCase()} reaches an unhealthy level.
+                </p>
+              )}
+            </>
           )}
 
           {mediaUploading && (
@@ -690,17 +718,15 @@ const handleUpdate = async () => {
         )}
       </div>
 
-      {m.videoType === 'Warning' ? (
-        <span
-          className="media-type-badge"
-          style={{
-            color: CATEGORY_COLORS[m.aqiCategory] || '#94a3b8',
-            borderColor: CATEGORY_COLORS[m.aqiCategory] || '#94a3b8',
-          }}
-        >
-          Warning · {m.aqiCategory}
-        </span>
-      ) : (
+      {m.videoType === 'Warning' ? (() => {
+        const param = m.warningParameter || 'AQI' // backward-compat: videos uploaded before this field existed
+        const color = (param === 'AQI' ? CATEGORY_COLORS[m.aqiCategory] : null) || '#dc2626'
+        return (
+          <span className="media-type-badge" style={{ color, borderColor: color }}>
+            Warning · {param === 'AQI' ? m.aqiCategory : param}
+          </span>
+        )
+      })() : (
         <span className="media-type-badge media-type-badge-educational">Educational</span>
       )}
 

@@ -23,16 +23,30 @@ const mediaSchema = new mongoose.Schema({
     default: ''
   },
   // "Educational" videos are the normal rotation on the bulletin board.
-  // "Warning" videos interrupt that rotation when the live AQI reaches the
-  // category they're assigned to (see aqiCategory below), then hand playback
-  // back to the educational video that was paused.
+  // "Warning" videos interrupt that rotation when the parameter they're
+  // assigned to (see warningParameter/aqiCategory below) reaches an
+  // unhealthy level, then hand playback back to the educational video that
+  // was paused.
   videoType: {
     type: String,
     enum: ['Educational', 'Warning'],
     default: 'Educational'
   },
-  // Required, and only meaningful, for Warning videos — which AQI category
-  // triggers this one. Null for Educational videos.
+  // Only meaningful for Warning videos — which reading triggers this one.
+  // AQI still picks a specific category (see aqiCategory); Humidity and
+  // Temperature are a single generic "unhealthy" trigger each, since they
+  // don't need Fair-vs-Emergency-style severity levels the way AQI does.
+  // Defaults to 'AQI' so Warning videos created before this field existed
+  // (which all had an aqiCategory) keep working without a migration —
+  // Mongoose applies schema defaults when reading a document missing the
+  // field, same as it would for a brand-new one.
+  warningParameter: {
+    type: String,
+    enum: ['AQI', 'Humidity', 'Temperature'],
+    default: 'AQI'
+  },
+  // Required, and only meaningful, when warningParameter is 'AQI' — which
+  // AQI category triggers this one. Null otherwise.
   aqiCategory: {
     type: String,
     enum: WARNING_CATEGORIES,
